@@ -19,7 +19,7 @@ func LocalIP() (net.IP, error) {
 		}
 		for _, a := range addrs {
 			ipnet, ok := a.(*net.IPNet)
-			if !ok || ipnet.IP.IsLoopback() {
+			if !ok || ipnet.IP.IsLoopback() || ipnet.IP.IsLinkLocalUnicast() {
 				continue
 			}
 			if v4 := ipnet.IP.To4(); v4 != nil {
