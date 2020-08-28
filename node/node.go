@@ -551,18 +551,6 @@ func (n *Node) watchOnce() {
 	}
 }
 
-func (n *Node) watchCsctl() {
-	rch := cronsun.WatchCsctl()
-	for wresp := range rch {
-		for _, ev := range wresp.Events {
-			switch {
-			case ev.IsCreate(), ev.IsModify():
-				n.executCsctlCmd(ev.Kv.Key, ev.Kv.Value)
-			}
-		}
-	}
-}
-
 // 启动服务
 func (n *Node) Run() (err error) {
 	go n.keepAlive()
@@ -582,7 +570,6 @@ func (n *Node) Run() (err error) {
 	go n.watchExcutingProc()
 	go n.watchGroups()
 	go n.watchOnce()
-	go n.watchCsctl()
 	n.Node.On()
 	return
 }
