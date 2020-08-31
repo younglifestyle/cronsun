@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os/exec"
-	"os/user"
 	"runtime"
 	"strconv"
 	"strings"
@@ -40,7 +38,6 @@ type Job struct {
 	Name    string     `json:"name"`
 	Group   string     `json:"group"`
 	Command string     `json:"cmd"`
-	User    string     `json:"user"`
 	Rules   []*JobRule `json:"rules"`
 	Pause   bool       `json:"pause"`   // 可手工控制的状态
 	Timeout int64      `json:"timeout"` // 任务执行时间超时设置，大于 0 时有效
@@ -71,6 +68,9 @@ type Job struct {
 	runOn    string
 	hostname string
 	ip       string
+
+	ExecuteHandler
+
 	// 用于存储分隔后的任务
 	cmd []string
 	// 控制同时执行任务数
@@ -452,9 +452,9 @@ func (j *Job) Run() bool {
 	if j.Timeout > 0 {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(j.Timeout)*time.Second)
 		defer cancel()
-		cmd = exec.CommandContext(ctx, j.cmd[0], j.cmd[1:]...)
+		cmd = exec.CommandContext(ctx, "/bin/bash", "-c", j.Command)
 	} else {
-		cmd = exec.Command(j.cmd[0], j.cmd[1:]...)
+		cmd = exec.Command("/bin/bash", "-c", j.Command)
 	}
 
 	cmd.SysProcAttr = sysProcAttr
@@ -484,6 +484,8 @@ func (j *Job) Run() bool {
 	}
 
 	j.Success(t, b.String())
+
+	fmt.Println("b.String() :", b.String())
 	return true
 }
 
@@ -541,7 +543,7 @@ func (j *Job) Check() error {
 		j.LogExpiration = 0
 	}
 
-	j.User = strings.TrimSpace(j.User)
+	//j.User = strings.TrimSpace(j.User)
 
 	for i := range j.Rules {
 		id := strings.TrimSpace(j.Rules[i].ID)
@@ -668,45 +670,7 @@ func (j *Job) Valid() error {
 		return err
 	}
 
-	security := conf.Config.Security
-	if !security.Open {
-		return nil
-	}
-
-	if !j.validUser() {
-		return ErrSecurityInvalidUser
-	}
-
-	if !j.validCmd() {
-		return ErrSecurityInvalidCmd
-	}
-
 	return nil
-}
-
-func (j *Job) validUser() bool {
-	if len(conf.Config.Security.Users) == 0 {
-		return true
-	}
-
-	for _, u := range conf.Config.Security.Users {
-		if j.User == u {
-			return true
-		}
-	}
-	return false
-}
-
-func (j *Job) validCmd() bool {
-	if len(conf.Config.Security.Ext) == 0 {
-		return true
-	}
-	for _, ext := range conf.Config.Security.Ext {
-		if strings.HasSuffix(j.cmd[0], ext) {
-			return true
-		}
-	}
-	return false
 }
 
 func (j *Job) ValidRules() error {
@@ -734,28 +698,6 @@ func (j *Job) ShortName() string {
 func (j *Job) CreateCmdAttr() (*syscall.SysProcAttr, error) {
 	sysProcAttr := &syscall.SysProcAttr{
 		Setpgid: true,
-	}
-
-	if len(j.User) == 0 {
-		return sysProcAttr, nil
-	}
-
-	u, err := user.Lookup(j.User)
-	if err != nil {
-		return nil, err
-	}
-
-	uid, err := strconv.Atoi(u.Uid)
-	if err != nil {
-		return nil, errors.New("not support run with user on windows")
-	}
-
-	if uid != _Uid {
-		gid, _ := strconv.Atoi(u.Gid)
-		sysProcAttr.Credential = &syscall.Credential{
-			Uid: uint32(uid),
-			Gid: uint32(gid),
-		}
 	}
 
 	return sysProcAttr, nil

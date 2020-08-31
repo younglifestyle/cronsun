@@ -95,7 +95,6 @@ func CreateJobLog(j *Job, t time.Time, rs string, success bool) {
 
 		JobGroup: j.Group,
 		Name:     j.Name,
-		User:     j.User,
 
 		Node:     j.runOn,
 		Hostname: j.hostname,
