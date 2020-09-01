@@ -2,16 +2,17 @@ package cronsun
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/shunfei/cronsun/conf"
 	"github.com/shunfei/cronsun/db"
 )
 
+const (
+	BasePath       = "/data/cron-job/"
+	FileSourcePath = BasePath + "filesource/"
+)
+
 var (
 	initialized bool
-
-	_Uid int
 )
 
 func Init(baseConfFile string, watchConfiFile bool) (err error) {
@@ -40,8 +41,6 @@ func Init(baseConfFile string, watchConfiFile bool) (err error) {
 		return fmt.Errorf("Connect to MongoDB %s failed: %s",
 			conf.Config.Mgo.Hosts, err)
 	}
-
-	_Uid = os.Getuid()
 
 	initialized = true
 	return

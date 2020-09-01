@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -34,13 +35,14 @@ const (
 // 需要执行的 cron cmd 命令
 // 注册到 /cronsun/cmd/groupName/<id>
 type Job struct {
-	ID      string     `json:"id"`
-	Name    string     `json:"name"`
-	Group   string     `json:"group"`
-	Command string     `json:"cmd"`
-	Rules   []*JobRule `json:"rules"`
-	Pause   bool       `json:"pause"`   // 可手工控制的状态
-	Timeout int64      `json:"timeout"` // 任务执行时间超时设置，大于 0 时有效
+	ID       string     `json:"id"`
+	Name     string     `json:"name"`
+	Group    string     `json:"group"`
+	Command  string     `json:"cmd"`
+	RunParam string     `json:"run_param"`
+	Rules    []*JobRule `json:"rules"`
+	Pause    bool       `json:"pause"`   // 可手工控制的状态
+	Timeout  int64      `json:"timeout"` // 任务执行时间超时设置，大于 0 时有效
 	// 设置任务在单个节点上可以同时允许多少个
 	// 针对两次任务执行间隔比任务执行时间要长的任务启用
 	Parallels int64 `json:"parallels"`
@@ -64,12 +66,18 @@ type Job struct {
 	// 单独对任务指定日志清除时间
 	LogExpiration int `json:"log_expiration"`
 
+	// 命令类型，bash/python
+	CmdType string `json:"cmd_type"`
+	// 更新时间
+	UpdateTime int64 `json:"update_time"`
+
 	// 执行任务的结点，用于记录 job log
 	runOn    string
 	hostname string
 	ip       string
 
-	ExecuteHandler
+	sync.RWMutex
+	fileExecPath string
 
 	// 用于存储分隔后的任务
 	cmd []string
@@ -448,13 +456,25 @@ func (j *Job) Run() bool {
 		return false
 	}
 
+	var buffer bytes.Buffer
+	buffer.WriteString(j.fileExecPath)
+	if len(j.RunParam) > 0 {
+		params := strings.Split(j.RunParam, ",")
+		for _, v := range params {
+			buffer.WriteString(" ")
+			buffer.WriteString(v)
+		}
+	}
+
+	c := buffer.String()
+
 	// 超时控制
 	if j.Timeout > 0 {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(j.Timeout)*time.Second)
 		defer cancel()
-		cmd = exec.CommandContext(ctx, "/bin/bash", "-c", j.Command)
+		cmd = exec.CommandContext(ctx, scriptCmd[j.CmdType], "-c", c)
 	} else {
-		cmd = exec.Command("/bin/bash", "-c", j.Command)
+		cmd = exec.Command(scriptCmd[j.CmdType], "-c", c)
 	}
 
 	cmd.SysProcAttr = sysProcAttr
@@ -557,6 +577,8 @@ func (j *Job) Check() error {
 		return ErrEmptyJobCommand
 	}
 
+	// todo: 这里默认是 SHELL, 以后需要更改
+	j.CmdType = "SHELL"
 	return j.Valid()
 }
 
@@ -662,8 +684,13 @@ LOOP_TIMER:
 
 // 安全选项验证
 func (j *Job) Valid() error {
-	if len(j.cmd) == 0 {
-		j.splitCmd()
+	//if len(j.cmd) == 0 {
+	//	j.splitCmd()
+	//}
+
+	err := j.parseJob()
+	if err != nil {
+		return err
 	}
 
 	if err := j.ValidRules(); err != nil {

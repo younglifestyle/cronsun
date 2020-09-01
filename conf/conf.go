@@ -52,12 +52,10 @@ type Conf struct {
 	Proc    string // 当前执行任务路径
 	Cmd     string // cmd 路径
 	Once    string // 马上执行任务路径
-	Csctl   string // csctl 发送执行命令的路径
 	Lock    string // job lock 路径
 	Group   string // 节点分组
 	Noticer string // 通知
 
-	PIDFile  string
 	UUIDFile string
 
 	Ttl        int64 // 节点超时时间，单位秒
@@ -76,8 +74,6 @@ type Conf struct {
 	Mgo  *db.Config
 	Web  *webConfig
 	Mail *MailConf
-
-	Security *Security
 }
 
 type etcdConfig struct {
@@ -119,19 +115,6 @@ type MailConf struct {
 	// 如果此时间段内没有邮件发送，则关闭 SMTP 连接，单位/秒
 	Keepalive int64
 	*gomail.Dialer
-}
-
-type Security struct {
-	// 是不开启安全选项
-	// true 开启
-	// 所执行的命令只能是机器上的脚本，仅支持配置项里的扩展名
-	// 执行用户只能选择配置里的用户
-	// false 关闭，命令和用户可以用动填写
-	Open bool `json:"open"`
-	// 配置执行用户
-	Users []string `json:"users"`
-	// 支持的执行的脚本扩展名
-	Ext []string `json:"ext"`
 }
 
 // 返回前后包含斜杆的 /a/b/ 的前缀
@@ -231,7 +214,6 @@ func (c *Conf) parse(confFile string) error {
 	c.Proc = cleanKeyPrefix(c.Proc)
 	c.Cmd = cleanKeyPrefix(c.Cmd)
 	c.Once = cleanKeyPrefix(c.Once)
-	c.Csctl = cleanKeyPrefix(c.Csctl)
 	c.Lock = cleanKeyPrefix(c.Lock)
 	c.Group = cleanKeyPrefix(c.Group)
 	c.Noticer = cleanKeyPrefix(c.Noticer)
@@ -253,9 +235,9 @@ func (c *Conf) watch(confFile string) error {
 			select {
 			case <-exitChan:
 				return
-			case event := <-watcher.Events:
+			case e := <-watcher.Events:
 				// 保存文件时会产生多个事件
-				if event.Op&(fsnotify.Write|fsnotify.Chmod) > 0 {
+				if e.Op&(fsnotify.Write|fsnotify.Chmod) > 0 {
 					update = true
 				}
 				timer.Reset(duration)
@@ -288,7 +270,7 @@ func (c *Conf) reload(confFile string) {
 	}
 
 	// etcd key 选项需要重启
-	cf.Node, cf.Proc, cf.Cmd, cf.Once, cf.Csctl, cf.Lock, cf.Group, cf.Noticer = c.Node, c.Proc, c.Cmd, c.Once, c.Csctl, c.Lock, c.Group, c.Noticer
+	cf.Node, cf.Proc, cf.Cmd, cf.Once, cf.Lock, cf.Group, cf.Noticer = c.Node, c.Proc, c.Cmd, c.Once, c.Lock, c.Group, c.Noticer
 
 	*c = *cf
 	log.Infof("config file[%s] reload success", confFile)

@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	Coll_Node = "node"
+	CollNode = "node"
 )
 
 // 执行 cron cmd 的进程
@@ -25,8 +25,7 @@ const (
 type Node struct {
 	ID       string `bson:"_id" json:"id"`  // machine id
 	PID      string `bson:"pid" json:"pid"` // 进程 pid
-	PIDFile  string `bson:"-" json:"-"`
-	IP       string `bson:"ip" json:"ip"` // node ip
+	IP       string `bson:"ip" json:"ip"`   // node ip
 	Hostname string `bson:"hostname" json:"hostname"`
 
 	Version  string    `bson:"version" json:"version"`
@@ -86,7 +85,7 @@ func GetNodes() (nodes []*Node, err error) {
 }
 
 func GetNodesBy(query interface{}) (nodes []*Node, err error) {
-	err = mgoDB.WithC(Coll_Node, func(c *mgo.Collection) error {
+	err = mgoDB.WithC(CollNode, func(c *mgo.Collection) error {
 		return c.Find(query).All(&nodes)
 	})
 
@@ -94,19 +93,19 @@ func GetNodesBy(query interface{}) (nodes []*Node, err error) {
 }
 
 func GetNodesByID(id string) (node *Node, err error) {
-	err = mgoDB.FindId(Coll_Node, id, &node)
+	err = mgoDB.FindId(CollNode, id, &node)
 	return
 }
 
 func RemoveNode(query interface{}) error {
-	return mgoDB.WithC(Coll_Node, func(c *mgo.Collection) error {
+	return mgoDB.WithC(CollNode, func(c *mgo.Collection) error {
 		return c.Remove(query)
 	})
 }
 
 func ISNodeAlive(id string) (bool, error) {
 	n := 0
-	err := mgoDB.WithC(Coll_Node, func(c *mgo.Collection) error {
+	err := mgoDB.WithC(CollNode, func(c *mgo.Collection) error {
 		var e error
 		n, e = c.Find(bson.M{"_id": id, "alived": true}).Count()
 		return e
@@ -152,7 +151,7 @@ func (n *Node) Down() {
 }
 
 func (n *Node) SyncToMgo() {
-	if err := mgoDB.Upsert(Coll_Node, bson.M{"_id": n.ID}, n); err != nil {
+	if err := mgoDB.Upsert(CollNode, bson.M{"_id": n.ID}, n); err != nil {
 		log.Errorf(err.Error())
 	}
 }

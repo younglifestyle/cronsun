@@ -3,9 +3,7 @@ package node
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path"
 	"strconv"
 	"strings"
 	"syscall"
@@ -60,7 +58,6 @@ func NewNode(cfg *conf.Conf) (n *Node, err error) {
 		Node: &cronsun.Node{
 			ID:       uuid,
 			PID:      strconv.Itoa(os.Getpid()),
-			PIDFile:  strings.TrimSpace(cfg.PIDFile),
 			IP:       ip.String(),
 			Hostname: hostname,
 		},
@@ -103,44 +100,8 @@ func (n *Node) set() error {
 	}
 
 	n.lID = resp.ID
-	n.writePIDFile()
 
 	return nil
-}
-
-func (n *Node) writePIDFile() {
-	if len(n.PIDFile) == 0 {
-		return
-	}
-
-	filename := "cronnode_pid"
-	if !strings.HasSuffix(n.PIDFile, "/") {
-		filename = path.Base(n.PIDFile)
-	}
-
-	dir := path.Dir(n.PIDFile)
-	err := os.MkdirAll(dir, 0755)
-	if err != nil {
-		log.Errorf("Failed to write pid file: %s. you can change PIDFile config in base.json", err)
-		return
-	}
-
-	n.PIDFile = path.Join(dir, filename)
-	err = ioutil.WriteFile(n.PIDFile, []byte(n.PID), 0644)
-	if err != nil {
-		log.Errorf("Failed to write pid file: %s. you can change PIDFile config in base.json", err)
-		return
-	}
-}
-
-func (n *Node) removePIDFile() {
-	if len(n.PIDFile) == 0 {
-		return
-	}
-
-	if err := os.Remove(n.PIDFile); err != nil {
-		log.Warnf("Failed to remove pid file: %s", err)
-	}
 }
 
 // 断网掉线重新注册
@@ -581,5 +542,4 @@ func (n *Node) Stop(i interface{}) {
 	n.Node.Del()
 	n.Client.Close()
 	n.Cron.Stop()
-	n.removePIDFile()
 }

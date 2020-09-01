@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/gorilla/mux"
@@ -159,6 +160,18 @@ func (j *Job) UpdateJob(ctx *Context) {
 		}
 	}
 
+	// 当前Job更新时间
+	job.UpdateTime = time.Now().Unix()
+//	job.Command = `#!/bin/bash
+//echo "xxl-job: hello shell"
+//
+//echo "脚本位置：$0"
+//echo "任务参数：$1"
+//echo "分片序号 = $2"
+//echo "分片总数 = $3"
+//
+//echo "Good bye!"
+//exit 0`
 	b, err := json.Marshal(job)
 	if err != nil {
 		outJSONWithCode(ctx.W, http.StatusInternalServerError, err.Error())
