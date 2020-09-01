@@ -91,20 +91,10 @@ func (e *etcdConfig) Copy() client.Config {
 
 type webConfig struct {
 	BindAddr string
-	Auth     struct {
-		Enabled bool
-	}
-	Session    SessionConfig
 	LogCleaner struct {
 		EveryMinute    int
 		ExpirationDays int
 	}
-}
-
-type SessionConfig struct {
-	Expiration      int
-	CookieName      string
-	StorePrefixPath string
 }
 
 type MailConf struct {

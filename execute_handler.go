@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/shunfei/cronsun/log"
 	"os"
-	"sync"
 )
 
 var scriptMap = map[string]string{
@@ -18,19 +17,10 @@ var scriptCmd = map[string]string{
 	"PYTHON": "python",
 }
 
-type ExecuteHandler interface {
-	ParseJob(job *Job) (err error)
-	Execute(jobId int32, glueType string, runParam *Job) error
-}
-
-type ScriptHandler struct {
-	sync.RWMutex
-}
-
 func (j *Job) parseJob() error {
 	suffix, ok := scriptMap[j.CmdType]
 	if !ok {
-		log.Infof("j.CmdType : %s", j.CmdType)
+		log.Infof("不支持的命令 : %s", j.CmdType)
 		return ErrSecurityInvalidCmd
 	}
 

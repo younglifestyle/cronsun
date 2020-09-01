@@ -339,7 +339,7 @@ func GetJobAndRev(group, id string) (job *Job, rev int64, err error) {
 		return
 	}
 
-	job.splitCmd()
+	//job.splitCmd()
 	return
 }
 

@@ -31,16 +31,16 @@ func EnsureJobLogIndex() {
 
 type JobLog struct{}
 
-func (jl *JobLog) GetDetail(ctx *Context) {
-	vars := mux.Vars(ctx.R)
+func (jl *JobLog) GetDetail(W http.ResponseWriter, R *http.Request) {
+	vars := mux.Vars(R)
 	id := strings.TrimSpace(vars["id"])
 	if len(id) == 0 {
-		outJSONWithCode(ctx.W, http.StatusBadRequest, "empty log id.")
+		outJSONWithCode(W, http.StatusBadRequest, "empty log id.")
 		return
 	}
 
 	if !bson.IsObjectIdHex(id) {
-		outJSONWithCode(ctx.W, http.StatusBadRequest, "invalid ObjectId.")
+		outJSONWithCode(W, http.StatusBadRequest, "invalid ObjectId.")
 		return
 	}
 
@@ -51,11 +51,11 @@ func (jl *JobLog) GetDetail(ctx *Context) {
 			statusCode = http.StatusNotFound
 			err = nil
 		}
-		outJSONWithCode(ctx.W, statusCode, err)
+		outJSONWithCode(W, statusCode, err)
 		return
 	}
 
-	outJSON(ctx.W, logDetail)
+	outJSON(W, logDetail)
 }
 
 func searchText(field string, keywords []string) (q []bson.M) {
@@ -70,16 +70,16 @@ func searchText(field string, keywords []string) (q []bson.M) {
 	return q
 }
 
-func (jl *JobLog) GetList(ctx *Context) {
-	hostnames := getStringArrayFromQuery("hostnames", ",", ctx.R)
-	ips := getStringArrayFromQuery("ips", ",", ctx.R)
-	names := getStringArrayFromQuery("names", ",", ctx.R)
-	ids := getStringArrayFromQuery("ids", ",", ctx.R)
-	begin := getTime(ctx.R.FormValue("begin"))
-	end := getTime(ctx.R.FormValue("end"))
-	page := getPage(ctx.R.FormValue("page"))
-	failedOnly := ctx.R.FormValue("failedOnly") == "true"
-	pageSize := getPageSize(ctx.R.FormValue("pageSize"))
+func (jl *JobLog) GetList(W http.ResponseWriter, R *http.Request) {
+	hostnames := getStringArrayFromQuery("hostnames", ",", R)
+	ips := getStringArrayFromQuery("ips", ",", R)
+	names := getStringArrayFromQuery("names", ",", R)
+	ids := getStringArrayFromQuery("ids", ",", R)
+	begin := getTime(R.FormValue("begin"))
+	end := getTime(R.FormValue("end"))
+	page := getPage(R.FormValue("page"))
+	failedOnly := R.FormValue("failedOnly") == "true"
+	pageSize := getPageSize(R.FormValue("pageSize"))
 	orderBy := "-beginTime"
 
 	query := bson.M{}
@@ -115,7 +115,7 @@ func (jl *JobLog) GetList(ctx *Context) {
 		List  []*cronsun.JobLog `json:"list"`
 	}
 	var err error
-	if ctx.R.FormValue("latest") == "true" {
+	if R.FormValue("latest") == "true" {
 		var latestLogList []*cronsun.JobLatestLog
 		latestLogList, pager.Total, err = cronsun.GetJobLatestLogList(query, page, pageSize, orderBy)
 		for i := range latestLogList {
@@ -126,10 +126,10 @@ func (jl *JobLog) GetList(ctx *Context) {
 		pager.List, pager.Total, err = cronsun.GetJobLogList(query, page, pageSize, orderBy)
 	}
 	if err != nil {
-		outJSONWithCode(ctx.W, http.StatusInternalServerError, err.Error())
+		outJSONWithCode(W, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	pager.Total = int(math.Ceil(float64(pager.Total) / float64(pageSize)))
-	outJSON(ctx.W, pager)
+	outJSON(W, pager)
 }

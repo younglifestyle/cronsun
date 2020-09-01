@@ -10,28 +10,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shunfei/cronsun"
-	"github.com/shunfei/cronsun/conf"
 	"github.com/shunfei/cronsun/log"
-	"github.com/shunfei/cronsun/web/session"
 )
 
-var sessManager session.SessionManager
-
 func InitServer() (*http.Server, error) {
-	sessManager = session.NewEtcdStore(cronsun.DefalutClient, conf.Config.Web.Session)
-
-	var err error
-	if err = checkAuthBasicData(); err != nil {
-		return nil, err
-	}
-
 	return initRouters()
 }
 
 type Context struct {
 	Data    map[interface{}]interface{}
-	Session *session.Session
 	todos   []func()
 	R       *http.Request
 	W       http.ResponseWriter
@@ -58,68 +45,12 @@ func (ctx *Context) Done() {
 }
 
 type BaseHandler struct {
-	Ctx          map[string]interface{}
-	BeforeHandle func(ctx *Context) (abort bool)
-	Handle       func(ctx *Context)
+	Handle func(ctx *Context)
 }
 
 func NewBaseHandler(f func(ctx *Context)) BaseHandler {
 	return BaseHandler{
-		BeforeHandle: authHandler(false, 0),
-		Handle:       f,
-	}
-}
-
-func NewAuthHandler(f func(ctx *Context), reqRole cronsun.Role) BaseHandler {
-	return BaseHandler{
-		BeforeHandle: authHandler(true, reqRole),
-		Handle:       f,
-	}
-}
-
-func authHandler(needAuth bool, reqRole cronsun.Role) func(*Context) bool {
-	return func(ctx *Context) (abort bool) {
-		var err error
-		ctx.Session, err = sessManager.Get(ctx.W, ctx.R)
-		if ctx.Session != nil {
-			ctx.Todo(func() {
-				if err := sessManager.Store(ctx.Session); err != nil {
-					log.Errorf("Failed to store session: %s.", err.Error())
-				}
-			})
-		}
-
-		if err != nil {
-			outJSONWithCode(ctx.W, http.StatusInternalServerError, err.Error())
-			abort = true
-			return
-		}
-
-		if !conf.Config.Web.Auth.Enabled || !needAuth {
-			return
-		}
-
-		if len(ctx.Session.Email) < 1 {
-			outJSONWithCode(ctx.W, http.StatusUnauthorized, "please login.")
-			abort = true
-			return
-		}
-
-		if r, ok := ctx.Session.Data["role"]; !ok {
-			outJSONWithCode(ctx.W, http.StatusUnauthorized, "role unknow.")
-			abort = true
-			return
-		} else if role, ok := r.(cronsun.Role); !ok {
-			outJSONWithCode(ctx.W, http.StatusUnauthorized, "role unknow.")
-			abort = true
-			return
-		} else if role > reqRole { // Lower number has more power.
-			outJSONWithCode(ctx.W, http.StatusUnauthorized, "higher role permission is required.")
-			abort = true
-			return
-		}
-
-		return
+		Handle: f,
 	}
 }
 
@@ -145,12 +76,6 @@ func (b BaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := newContext(w, r)
 	defer ctx.Done()
 
-	if b.BeforeHandle != nil {
-		abort := b.BeforeHandle(ctx)
-		if abort {
-			return
-		}
-	}
 	b.Handle(ctx)
 }
 

@@ -1,10 +1,13 @@
 package web
 
-import "github.com/shunfei/cronsun/conf"
+import (
+	"github.com/shunfei/cronsun/conf"
+	"net/http"
+)
 
 type Configuration struct{}
 
-func (cnf *Configuration) Configuratios(ctx *Context) {
+func (cnf *Configuration) Configuratios(W http.ResponseWriter, R *http.Request) {
 	r := struct {
 		Alarm             bool `json:"alarm"`
 		LogExpirationDays int  `json:"log_expiration_days"`
@@ -16,5 +19,5 @@ func (cnf *Configuration) Configuratios(ctx *Context) {
 		r.LogExpirationDays = conf.Config.Web.LogCleaner.ExpirationDays
 	}
 
-	outJSON(ctx.W, r)
+	outJSON(W, r)
 }

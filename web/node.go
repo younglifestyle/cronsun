@@ -19,15 +19,15 @@ type Node struct{}
 
 var ngKeyDeepLen = len(conf.Config.Group)
 
-func (n *Node) UpdateGroup(ctx *Context) {
+func (n *Node) UpdateGroup(W http.ResponseWriter, R *http.Request) {
 	g := cronsun.Group{}
-	de := json.NewDecoder(ctx.R.Body)
+	de := json.NewDecoder(R.Body)
 	var err error
 	if err = de.Decode(&g); err != nil {
-		outJSONWithCode(ctx.W, http.StatusBadRequest, err.Error())
+		outJSONWithCode(W, http.StatusBadRequest, err.Error())
 		return
 	}
-	defer ctx.R.Body.Close()
+	defer R.Body.Close()
 
 	var successCode = http.StatusOK
 	g.ID = strings.TrimSpace(g.ID)
@@ -37,56 +37,56 @@ func (n *Node) UpdateGroup(ctx *Context) {
 	}
 
 	if err = g.Check(); err != nil {
-		outJSONWithCode(ctx.W, http.StatusBadRequest, err.Error())
+		outJSONWithCode(W, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	// @TODO modRev
 	var modRev int64 = 0
 	if _, err = g.Put(modRev); err != nil {
-		outJSONWithCode(ctx.W, http.StatusBadRequest, err.Error())
+		outJSONWithCode(W, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	outJSONWithCode(ctx.W, successCode, nil)
+	outJSONWithCode(W, successCode, nil)
 }
 
-func (n *Node) GetGroups(ctx *Context) {
+func (n *Node) GetGroups(W http.ResponseWriter, R *http.Request) {
 	list, err := cronsun.GetNodeGroups()
 	if err != nil {
-		outJSONWithCode(ctx.W, http.StatusInternalServerError, err.Error())
+		outJSONWithCode(W, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	outJSON(ctx.W, list)
+	outJSON(W, list)
 }
 
-func (n *Node) GetGroupByGroupId(ctx *Context) {
-	vars := mux.Vars(ctx.R)
+func (n *Node) GetGroupByGroupId(W http.ResponseWriter, R *http.Request) {
+	vars := mux.Vars(R)
 	g, err := cronsun.GetGroupById(vars["id"])
 	if err != nil {
-		outJSONWithCode(ctx.W, http.StatusInternalServerError, err.Error())
+		outJSONWithCode(W, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	if g == nil {
-		outJSONWithCode(ctx.W, http.StatusNotFound, nil)
+		outJSONWithCode(W, http.StatusNotFound, nil)
 		return
 	}
-	outJSON(ctx.W, g)
+	outJSON(W, g)
 }
 
-func (n *Node) DeleteGroup(ctx *Context) {
-	vars := mux.Vars(ctx.R)
+func (n *Node) DeleteGroup(W http.ResponseWriter, R *http.Request) {
+	vars := mux.Vars(R)
 	groupId := strings.TrimSpace(vars["id"])
 	if len(groupId) == 0 {
-		outJSONWithCode(ctx.W, http.StatusBadRequest, "empty node ground id.")
+		outJSONWithCode(W, http.StatusBadRequest, "empty node ground id.")
 		return
 	}
 
 	_, err := cronsun.DeleteGroupById(groupId)
 	if err != nil {
-		outJSONWithCode(ctx.W, http.StatusInternalServerError, err.Error())
+		outJSONWithCode(W, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -94,7 +94,7 @@ func (n *Node) DeleteGroup(ctx *Context) {
 	if err != nil {
 		errstr := fmt.Sprintf("failed to fetch jobs from etcd after deleted node group[%s]: %s", groupId, err.Error())
 		log.Errorf(errstr)
-		outJSONWithCode(ctx.W, http.StatusInternalServerError, errstr)
+		outJSONWithCode(W, http.StatusInternalServerError, errstr)
 		return
 	}
 
@@ -136,13 +136,13 @@ func (n *Node) DeleteGroup(ctx *Context) {
 		}
 	}
 
-	outJSONWithCode(ctx.W, http.StatusNoContent, nil)
+	outJSONWithCode(W, http.StatusNoContent, nil)
 }
 
-func (n *Node) GetNodes(ctx *Context) {
+func (n *Node) GetNodes(W http.ResponseWriter, R *http.Request) {
 	nodes, err := cronsun.GetNodes()
 	if err != nil {
-		outJSONWithCode(ctx.W, http.StatusInternalServerError, err.Error())
+		outJSONWithCode(W, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -162,32 +162,32 @@ func (n *Node) GetNodes(ctx *Context) {
 		log.Errorf("failed to fetch key[%s] from etcd: %s", conf.Config.Node, err.Error())
 	}
 
-	outJSONWithCode(ctx.W, http.StatusOK, nodes)
+	outJSONWithCode(W, http.StatusOK, nodes)
 }
 
 // DeleteNode force remove node (by ip) which state in offline or damaged.
-func (n *Node) DeleteNode(ctx *Context) {
-	vars := mux.Vars(ctx.R)
+func (n *Node) DeleteNode(W http.ResponseWriter, R *http.Request) {
+	vars := mux.Vars(R)
 	ip := strings.TrimSpace(vars["ip"])
 	if len(ip) == 0 {
-		outJSONWithCode(ctx.W, http.StatusBadRequest, "node ip is required.")
+		outJSONWithCode(W, http.StatusBadRequest, "node ip is required.")
 		return
 	}
 
 	resp, err := cronsun.DefalutClient.Get(conf.Config.Node + ip)
 	if err != nil {
-		outJSONWithCode(ctx.W, http.StatusInternalServerError, err.Error())
+		outJSONWithCode(W, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	if len(resp.Kvs) > 0 {
-		outJSONWithCode(ctx.W, http.StatusBadRequest, "can not remove a running node.")
+		outJSONWithCode(W, http.StatusBadRequest, "can not remove a running node.")
 		return
 	}
 
 	err = cronsun.RemoveNode(bson.M{"_id": ip})
 	if err != nil {
-		outJSONWithCode(ctx.W, http.StatusInternalServerError, err.Error())
+		outJSONWithCode(W, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -195,7 +195,7 @@ func (n *Node) DeleteNode(ctx *Context) {
 	var errmsg = "failed to remove node %s from groups, please remove it manually: %s"
 	resp, err = cronsun.DefalutClient.Get(conf.Config.Group, v3.WithPrefix())
 	if err != nil {
-		outJSONWithCode(ctx.W, http.StatusInternalServerError, fmt.Sprintf(errmsg, ip, err.Error()))
+		outJSONWithCode(W, http.StatusInternalServerError, fmt.Sprintf(errmsg, ip, err.Error()))
 		return
 	}
 
@@ -203,7 +203,7 @@ func (n *Node) DeleteNode(ctx *Context) {
 		g := cronsun.Group{}
 		err = json.Unmarshal(resp.Kvs[i].Value, &g)
 		if err != nil {
-			outJSONWithCode(ctx.W, http.StatusInternalServerError, fmt.Sprintf(errmsg, ip, err.Error()))
+			outJSONWithCode(W, http.StatusInternalServerError, fmt.Sprintf(errmsg, ip, err.Error()))
 			return
 		}
 
@@ -216,10 +216,10 @@ func (n *Node) DeleteNode(ctx *Context) {
 		g.NodeIDs = nids
 
 		if _, err = g.Put(resp.Kvs[i].ModRevision); err != nil {
-			outJSONWithCode(ctx.W, http.StatusInternalServerError, fmt.Sprintf(errmsg, ip, err.Error()))
+			outJSONWithCode(W, http.StatusInternalServerError, fmt.Sprintf(errmsg, ip, err.Error()))
 			return
 		}
 	}
 
-	outJSONWithCode(ctx.W, http.StatusNoContent, nil)
+	outJSONWithCode(W, http.StatusNoContent, nil)
 }

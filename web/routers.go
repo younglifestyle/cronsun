@@ -10,8 +10,8 @@ import (
 	"github.com/shunfei/cronsun"
 )
 
-func GetVersion(ctx *Context) {
-	outJSON(ctx.W, cronsun.Version)
+func GetVersion(W http.ResponseWriter, R *http.Request) {
+	outJSON(W, cronsun.Version)
 }
 
 func initRouters() (s *http.Server, err error) {
@@ -20,95 +20,58 @@ func initRouters() (s *http.Server, err error) {
 	jobLogHandler := &JobLog{}
 	infoHandler := &Info{}
 	configHandler := &Configuration{}
-	authHandler := &Authentication{}
-	adminHandler := &Administrator{}
 
 	r := mux.NewRouter()
 	subrouter := r.PathPrefix("/v1").Subrouter()
-	subrouter.Handle("/version", NewBaseHandler(GetVersion)).Methods("GET")
-
-	h := NewBaseHandler(authHandler.GetAuthSession)
-	subrouter.Handle("/session", h).Methods("GET")
-	h = NewBaseHandler(authHandler.DeleteAuthSession)
-	subrouter.Handle("/session", h).Methods("DELETE")
-
-	h = NewBaseHandler(authHandler.SetPassword)
-	subrouter.Handle("/user/setpwd", h).Methods("POST")
-
-	h = NewAdminAuthHandler(adminHandler.GetAccount)
-	subrouter.Handle("/admin/account/{email}", h).Methods("GET")
-	h = NewAdminAuthHandler(adminHandler.GetAccountList)
-	subrouter.Handle("/admin/accounts", h).Methods("GET")
-	h = NewAdminAuthHandler(adminHandler.AddAccount)
-	subrouter.Handle("/admin/account", h).Methods("PUT")
-	h = NewAdminAuthHandler(adminHandler.UpdateAccount)
-	subrouter.Handle("/admin/account", h).Methods("POSt")
+	subrouter.HandleFunc("/version", GetVersion).Methods("GET")
 
 	// get job list
-	h = NewAuthHandler(jobHandler.GetList, cronsun.Reporter)
-	subrouter.Handle("/jobs", h).Methods("GET")
+	subrouter.HandleFunc("/jobs", jobHandler.GetList).Methods("GET")
 	// get a job group list
-	h = NewAuthHandler(jobHandler.GetGroups, cronsun.Reporter)
-	subrouter.Handle("/job/groups", h).Methods("GET")
+	subrouter.HandleFunc("/job/groups", jobHandler.GetGroups).Methods("GET")
+
 	// create/update a job
-	h = NewAuthHandler(jobHandler.UpdateJob, cronsun.Developer)
-	subrouter.Handle("/job", h).Methods("PUT")
+	subrouter.HandleFunc("/job", jobHandler.UpdateJob).Methods("PUT")
 	// pause/start
-	h = NewAuthHandler(jobHandler.ChangeJobStatus, cronsun.Developer)
-	subrouter.Handle("/job/{group}-{id}", h).Methods("POST")
+	subrouter.HandleFunc("/job/{group}-{id}", jobHandler.ChangeJobStatus).Methods("POST")
 	// batch pause/start
-	h = NewAuthHandler(jobHandler.BatchChangeJobStatus, cronsun.Developer)
-	subrouter.Handle("/jobs/{op}", h).Methods("POST")
+	subrouter.HandleFunc("/jobs/{op}", jobHandler.BatchChangeJobStatus).Methods("POST")
 	// get a job
-	h = NewAuthHandler(jobHandler.GetJob, cronsun.Reporter)
-	subrouter.Handle("/job/{group}-{id}", h).Methods("GET")
+	subrouter.HandleFunc("/job/{group}-{id}", jobHandler.GetJob).Methods("GET")
 	// remove a job
-	h = NewAuthHandler(jobHandler.DeleteJob, cronsun.Developer)
-	subrouter.Handle("/job/{group}-{id}", h).Methods("DELETE")
+	subrouter.HandleFunc("/job/{group}-{id}", jobHandler.DeleteJob).Methods("DELETE")
+	// 获取执行该任务的Job
+	subrouter.HandleFunc("/job/{group}-{id}/nodes", jobHandler.GetJobNodes).Methods("GET")
 
-	h = NewAuthHandler(jobHandler.GetJobNodes, cronsun.Reporter)
-	subrouter.Handle("/job/{group}-{id}/nodes", h).Methods("GET")
-
-	h = NewAuthHandler(jobHandler.JobExecute, cronsun.Developer)
-	subrouter.Handle("/job/{group}-{id}/execute", h).Methods("PUT")
+	// put once task to Node execute
+	subrouter.HandleFunc("/job/{group}-{id}/execute", jobHandler.JobExecute).Methods("PUT")
 
 	// query executing job
-	h = NewAuthHandler(jobHandler.GetExecutingJob, cronsun.Reporter)
-	subrouter.Handle("/job/executing", h).Methods("GET")
+	subrouter.HandleFunc("/job/executing", jobHandler.GetExecutingJob).Methods("GET")
 
 	// kill an executing job
-	h = NewAuthHandler(jobHandler.KillExecutingJob, cronsun.Developer)
-	subrouter.Handle("/job/executing", h).Methods("DELETE")
+	subrouter.HandleFunc("/job/executing", jobHandler.KillExecutingJob).Methods("DELETE")
 
 	// get job log list
-	h = NewAuthHandler(jobLogHandler.GetList, cronsun.Reporter)
-	subrouter.Handle("/logs", h).Methods("GET")
+	subrouter.HandleFunc("/logs", jobLogHandler.GetList).Methods("GET")
 	// get job log
-	h = NewAuthHandler(jobLogHandler.GetDetail, cronsun.Developer)
-	subrouter.Handle("/log/{id}", h).Methods("GET")
-
-	h = NewAuthHandler(nodeHandler.GetNodes, cronsun.Reporter)
-	subrouter.Handle("/nodes", h).Methods("GET")
-	h = NewAuthHandler(nodeHandler.DeleteNode, cronsun.Developer)
-	subrouter.Handle("/node/{ip}", h).Methods("DELETE")
+	subrouter.HandleFunc("/log/{id}", jobLogHandler.GetDetail).Methods("GET")
+	// 获取所有Node
+	subrouter.HandleFunc("/nodes", nodeHandler.GetNodes).Methods("GET")
+	// 删除节点
+	subrouter.HandleFunc("/node/{ip}", nodeHandler.DeleteNode).Methods("DELETE")
 	// get node group list
-	h = NewAuthHandler(nodeHandler.GetGroups, cronsun.Reporter)
-	subrouter.Handle("/node/groups", h).Methods("GET")
+	subrouter.HandleFunc("/node/groups", nodeHandler.GetGroups).Methods("GET")
 	// get a node group by group id
-	h = NewAuthHandler(nodeHandler.GetGroupByGroupId, cronsun.Reporter)
-	subrouter.Handle("/node/group/{id}", h).Methods("GET")
+	subrouter.HandleFunc("/node/group/{id}", nodeHandler.GetGroupByGroupId).Methods("GET")
 	// create/update a node group
-	h = NewAuthHandler(nodeHandler.UpdateGroup, cronsun.Developer)
-	subrouter.Handle("/node/group", h).Methods("PUT")
+	subrouter.HandleFunc("/node/group", nodeHandler.UpdateGroup).Methods("PUT")
 	// delete a node group
-	h = NewAuthHandler(nodeHandler.DeleteGroup, cronsun.Developer)
-	subrouter.Handle("/node/group/{id}", h).Methods("DELETE")
+	subrouter.HandleFunc("/node/group/{id}", nodeHandler.DeleteGroup).Methods("DELETE")
 
-	h = NewAuthHandler(infoHandler.Overview, cronsun.Reporter)
-	subrouter.Handle("/info/overview", h).Methods("GET")
+	subrouter.HandleFunc("/info/overview", infoHandler.Overview).Methods("GET")
 
-	h = NewAuthHandler(configHandler.Configuratios, cronsun.Reporter)
-	subrouter.Handle("/configurations", h).Methods("GET")
+	subrouter.HandleFunc("/configurations", configHandler.Configuratios).Methods("GET")
 
 	r.PathPrefix("/ui/").Handler(http.StripPrefix("/ui/", newEmbeddedFileServer("", "index.html")))
 	r.NotFoundHandler = NewBaseHandler(notFoundHandler)
