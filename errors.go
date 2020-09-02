@@ -14,6 +14,6 @@ var (
 	ErrEmptyNodeGroupName = errors.New("Name of node group is empty.")
 	ErrIllegalNodeGroupId = errors.New("Invalid node group id that includes illegal characters such as '/'.")
 
-	ErrSecurityInvalidCmd  = errors.New("Security error: the suffix of script file is not on the whitelist.")
+	ErrSecurityInvalidCmd  = errors.New("Security error: the suffix of script file is not support.")
 	ErrNilRule             = errors.New("invalid job rule, empty timer.")
 )

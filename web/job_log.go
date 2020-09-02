@@ -1,12 +1,12 @@
 package web
 
 import (
+	"github.com/gin-gonic/gin"
 	"math"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 
@@ -31,16 +31,15 @@ func EnsureJobLogIndex() {
 
 type JobLog struct{}
 
-func (jl *JobLog) GetDetail(W http.ResponseWriter, R *http.Request) {
-	vars := mux.Vars(R)
-	id := strings.TrimSpace(vars["id"])
+func (jl *JobLog) GetDetail(c *gin.Context) {
+	id := c.Param("id")
 	if len(id) == 0 {
-		outJSONWithCode(W, http.StatusBadRequest, "empty log id.")
+		c.String(http.StatusBadRequest, "empty log id.")
 		return
 	}
 
 	if !bson.IsObjectIdHex(id) {
-		outJSONWithCode(W, http.StatusBadRequest, "invalid ObjectId.")
+		c.String(http.StatusBadRequest, "invalid ObjectId.")
 		return
 	}
 
@@ -49,13 +48,12 @@ func (jl *JobLog) GetDetail(W http.ResponseWriter, R *http.Request) {
 		statusCode := http.StatusInternalServerError
 		if err == mgo.ErrNotFound {
 			statusCode = http.StatusNotFound
-			err = nil
 		}
-		outJSONWithCode(W, statusCode, err)
+		c.String(statusCode, err.Error())
 		return
 	}
 
-	outJSON(W, logDetail)
+	c.JSON(http.StatusOK, logDetail)
 }
 
 func searchText(field string, keywords []string) (q []bson.M) {
@@ -70,16 +68,16 @@ func searchText(field string, keywords []string) (q []bson.M) {
 	return q
 }
 
-func (jl *JobLog) GetList(W http.ResponseWriter, R *http.Request) {
-	hostnames := getStringArrayFromQuery("hostnames", ",", R)
-	ips := getStringArrayFromQuery("ips", ",", R)
-	names := getStringArrayFromQuery("names", ",", R)
-	ids := getStringArrayFromQuery("ids", ",", R)
-	begin := getTime(R.FormValue("begin"))
-	end := getTime(R.FormValue("end"))
-	page := getPage(R.FormValue("page"))
-	failedOnly := R.FormValue("failedOnly") == "true"
-	pageSize := getPageSize(R.FormValue("pageSize"))
+func (jl *JobLog) GetList(c *gin.Context) {
+	hostnames := getStringArrayFromQuery("hostnames", ",", c.Request)
+	ips := getStringArrayFromQuery("ips", ",", c.Request)
+	names := getStringArrayFromQuery("names", ",", c.Request)
+	ids := getStringArrayFromQuery("ids", ",", c.Request)
+	begin := getTime(c.Query("begin"))
+	end := getTime(c.Query("end"))
+	page := getPage(c.Query("page"))
+	failedOnly := c.Query("failedOnly") == "true"
+	pageSize := getPageSize(c.Query("pageSize"))
 	orderBy := "-beginTime"
 
 	query := bson.M{}
@@ -115,7 +113,7 @@ func (jl *JobLog) GetList(W http.ResponseWriter, R *http.Request) {
 		List  []*cronsun.JobLog `json:"list"`
 	}
 	var err error
-	if R.FormValue("latest") == "true" {
+	if c.Request.FormValue("latest") == "true" {
 		var latestLogList []*cronsun.JobLatestLog
 		latestLogList, pager.Total, err = cronsun.GetJobLatestLogList(query, page, pageSize, orderBy)
 		for i := range latestLogList {
@@ -126,10 +124,10 @@ func (jl *JobLog) GetList(W http.ResponseWriter, R *http.Request) {
 		pager.List, pager.Total, err = cronsun.GetJobLogList(query, page, pageSize, orderBy)
 	}
 	if err != nil {
-		outJSONWithCode(W, http.StatusInternalServerError, err.Error())
+		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	pager.Total = int(math.Ceil(float64(pager.Total) / float64(pageSize)))
-	outJSON(W, pager)
+	c.JSON(http.StatusInternalServerError, pager)
 }

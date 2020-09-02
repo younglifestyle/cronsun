@@ -340,7 +340,7 @@ func (n *Node) groupAddNode(g *cronsun.Group) {
 				continue
 			}
 
-			if err = job.Valid(); err != nil {
+			if err = job.Valid("node"); err != nil {
 				log.Warnf("invalid job[%s][%s]: %s", jl.gname, jid, err.Error())
 				n.link.delGroupJob(g.ID, jid)
 				continue

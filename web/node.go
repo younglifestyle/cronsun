@@ -3,11 +3,11 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
 
 	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2/bson"
 
 	"github.com/shunfei/cronsun"
@@ -19,15 +19,13 @@ type Node struct{}
 
 var ngKeyDeepLen = len(conf.Config.Group)
 
-func (n *Node) UpdateGroup(W http.ResponseWriter, R *http.Request) {
+func (n *Node) UpdateGroup(c *gin.Context) {
 	g := cronsun.Group{}
-	de := json.NewDecoder(R.Body)
-	var err error
-	if err = de.Decode(&g); err != nil {
-		outJSONWithCode(W, http.StatusBadRequest, err.Error())
+	err := c.BindJSON(&g)
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
-	defer R.Body.Close()
 
 	var successCode = http.StatusOK
 	g.ID = strings.TrimSpace(g.ID)
@@ -37,56 +35,55 @@ func (n *Node) UpdateGroup(W http.ResponseWriter, R *http.Request) {
 	}
 
 	if err = g.Check(); err != nil {
-		outJSONWithCode(W, http.StatusBadRequest, err.Error())
+		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 
 	// @TODO modRev
 	var modRev int64 = 0
 	if _, err = g.Put(modRev); err != nil {
-		outJSONWithCode(W, http.StatusBadRequest, err.Error())
+		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	outJSONWithCode(W, successCode, nil)
+	c.String(successCode, "")
 }
 
-func (n *Node) GetGroups(W http.ResponseWriter, R *http.Request) {
+func (n *Node) GetGroups(c *gin.Context) {
 	list, err := cronsun.GetNodeGroups()
 	if err != nil {
-		outJSONWithCode(W, http.StatusInternalServerError, err.Error())
+		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	outJSON(W, list)
+	c.JSON(http.StatusOK, list)
 }
 
-func (n *Node) GetGroupByGroupId(W http.ResponseWriter, R *http.Request) {
-	vars := mux.Vars(R)
-	g, err := cronsun.GetGroupById(vars["id"])
+func (n *Node) GetGroupByGroupId(c *gin.Context) {
+	gid := c.Query("id")
+	g, err := cronsun.GetGroupById(gid)
 	if err != nil {
-		outJSONWithCode(W, http.StatusInternalServerError, err.Error())
+		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	if g == nil {
-		outJSONWithCode(W, http.StatusNotFound, nil)
+		c.String(http.StatusNotFound, "not found")
 		return
 	}
-	outJSON(W, g)
+	c.JSON(http.StatusOK, g)
 }
 
-func (n *Node) DeleteGroup(W http.ResponseWriter, R *http.Request) {
-	vars := mux.Vars(R)
-	groupId := strings.TrimSpace(vars["id"])
+func (n *Node) DeleteGroup(c *gin.Context) {
+	groupId := c.Query("id")
 	if len(groupId) == 0 {
-		outJSONWithCode(W, http.StatusBadRequest, "empty node ground id.")
+		c.String(http.StatusBadRequest, "empty node ground id.")
 		return
 	}
 
 	_, err := cronsun.DeleteGroupById(groupId)
 	if err != nil {
-		outJSONWithCode(W, http.StatusInternalServerError, err.Error())
+		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -94,7 +91,7 @@ func (n *Node) DeleteGroup(W http.ResponseWriter, R *http.Request) {
 	if err != nil {
 		errstr := fmt.Sprintf("failed to fetch jobs from etcd after deleted node group[%s]: %s", groupId, err.Error())
 		log.Errorf(errstr)
-		outJSONWithCode(W, http.StatusInternalServerError, errstr)
+		c.String(http.StatusInternalServerError, errstr)
 		return
 	}
 
@@ -136,13 +133,13 @@ func (n *Node) DeleteGroup(W http.ResponseWriter, R *http.Request) {
 		}
 	}
 
-	outJSONWithCode(W, http.StatusNoContent, nil)
+	c.String(http.StatusOK, "")
 }
 
-func (n *Node) GetNodes(W http.ResponseWriter, R *http.Request) {
+func (n *Node) GetNodes(c *gin.Context) {
 	nodes, err := cronsun.GetNodes()
 	if err != nil {
-		outJSONWithCode(W, http.StatusInternalServerError, err.Error())
+		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -162,32 +159,31 @@ func (n *Node) GetNodes(W http.ResponseWriter, R *http.Request) {
 		log.Errorf("failed to fetch key[%s] from etcd: %s", conf.Config.Node, err.Error())
 	}
 
-	outJSONWithCode(W, http.StatusOK, nodes)
+	c.JSON(http.StatusOK, nodes)
 }
 
 // DeleteNode force remove node (by ip) which state in offline or damaged.
-func (n *Node) DeleteNode(W http.ResponseWriter, R *http.Request) {
-	vars := mux.Vars(R)
-	ip := strings.TrimSpace(vars["ip"])
-	if len(ip) == 0 {
-		outJSONWithCode(W, http.StatusBadRequest, "node ip is required.")
+func (n *Node) DeleteNode(c *gin.Context) {
+	nodeId := c.Query("id")
+	if len(nodeId) == 0 {
+		c.String(http.StatusBadRequest, "node nodeId is required.")
 		return
 	}
 
-	resp, err := cronsun.DefalutClient.Get(conf.Config.Node + ip)
+	resp, err := cronsun.DefalutClient.Get(conf.Config.Node + nodeId)
 	if err != nil {
-		outJSONWithCode(W, http.StatusInternalServerError, err.Error())
+		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	if len(resp.Kvs) > 0 {
-		outJSONWithCode(W, http.StatusBadRequest, "can not remove a running node.")
+		c.String(http.StatusBadRequest, "can not remove a running node.")
 		return
 	}
 
-	err = cronsun.RemoveNode(bson.M{"_id": ip})
+	err = cronsun.RemoveNode(bson.M{"_id": nodeId})
 	if err != nil {
-		outJSONWithCode(W, http.StatusInternalServerError, err.Error())
+		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -195,7 +191,7 @@ func (n *Node) DeleteNode(W http.ResponseWriter, R *http.Request) {
 	var errmsg = "failed to remove node %s from groups, please remove it manually: %s"
 	resp, err = cronsun.DefalutClient.Get(conf.Config.Group, v3.WithPrefix())
 	if err != nil {
-		outJSONWithCode(W, http.StatusInternalServerError, fmt.Sprintf(errmsg, ip, err.Error()))
+		c.String(http.StatusInternalServerError, fmt.Sprintf(errmsg, nodeId, err.Error()))
 		return
 	}
 
@@ -203,23 +199,23 @@ func (n *Node) DeleteNode(W http.ResponseWriter, R *http.Request) {
 		g := cronsun.Group{}
 		err = json.Unmarshal(resp.Kvs[i].Value, &g)
 		if err != nil {
-			outJSONWithCode(W, http.StatusInternalServerError, fmt.Sprintf(errmsg, ip, err.Error()))
+			c.String(http.StatusInternalServerError, fmt.Sprintf(errmsg, nodeId, err.Error()))
 			return
 		}
 
 		var nids = make([]string, 0, len(g.NodeIDs))
 		for _, nid := range g.NodeIDs {
-			if nid != ip {
+			if nid != nodeId {
 				nids = append(nids, nid)
 			}
 		}
 		g.NodeIDs = nids
 
 		if _, err = g.Put(resp.Kvs[i].ModRevision); err != nil {
-			outJSONWithCode(W, http.StatusInternalServerError, fmt.Sprintf(errmsg, ip, err.Error()))
+			c.String(http.StatusInternalServerError, fmt.Sprintf(errmsg, nodeId, err.Error()))
 			return
 		}
 	}
 
-	outJSONWithCode(W, http.StatusNoContent, nil)
+	c.JSON(http.StatusOK, "is ok")
 }

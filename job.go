@@ -366,7 +366,7 @@ func GetJobs() (jobs map[string]*Job, err error) {
 			continue
 		}
 
-		if err := job.Valid(); err != nil {
+		if err := job.Valid("node"); err != nil {
 			log.Warnf("job[%s] is invalid: %s", string(j.Key), err.Error())
 			continue
 		}
@@ -388,7 +388,7 @@ func GetJobFromKv(key, value []byte) (job *Job, err error) {
 		return
 	}
 
-	err = job.Valid()
+	err = job.Valid("node")
 	job.alone()
 	return
 }
@@ -499,13 +499,12 @@ func (j *Job) Run() bool {
 	defer proc.Stop()
 
 	if err := cmd.Wait(); err != nil {
+		log.Debugf("cmd exec error : %s ", b.String())
 		j.Fail(t, fmt.Sprintf("%s\n%s", b.String(), err.Error()))
 		return false
 	}
 
 	j.Success(t, b.String())
-
-	fmt.Println("b.String() :", b.String())
 	return true
 }
 
@@ -579,7 +578,7 @@ func (j *Job) Check() error {
 
 	// todo: 这里默认是 SHELL, 以后需要更改
 	j.CmdType = "SHELL"
-	return j.Valid()
+	return j.Valid("server")
 }
 
 // 执行结果写入 mongoDB
@@ -682,13 +681,13 @@ LOOP_TIMER:
 	return false
 }
 
-// 安全选项验证
-func (j *Job) Valid() error {
+// 安全选项验证  "server"仅验证是否支持脚本，不进行将bash写文件操作  'node'真正执行
+func (j *Job) Valid(serverOrNode string) error {
 	//if len(j.cmd) == 0 {
 	//	j.splitCmd()
 	//}
 
-	err := j.parseJob()
+	err := j.parseJob(serverOrNode)
 	if err != nil {
 		return err
 	}

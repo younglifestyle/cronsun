@@ -46,5 +46,4 @@ func cleanupLogs(expiration time.Duration) {
 		log.Errorf("[Cleaner] Failed to remove expired logs: %s", err.Error())
 		return
 	}
-
 }

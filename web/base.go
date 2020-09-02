@@ -1,100 +1,15 @@
 package web
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
+	"github.com/gin-gonic/gin"
 	"net/http"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/shunfei/cronsun/log"
 )
 
-func InitServer() (*http.Server, error) {
+func InitServer() (*gin.Engine, error) {
 	return initRouters()
-}
-
-type Context struct {
-	Data    map[interface{}]interface{}
-	todos   []func()
-	R       *http.Request
-	W       http.ResponseWriter
-}
-
-func newContext(w http.ResponseWriter, r *http.Request) *Context {
-	return &Context{
-		R:     r,
-		W:     w,
-		todos: make([]func(), 0, 2),
-		Data:  make(map[interface{}]interface{}, 2),
-	}
-}
-
-func (ctx *Context) Todo(f func()) {
-	ctx.todos = append(ctx.todos, f)
-}
-
-func (ctx *Context) Done() {
-	n := len(ctx.todos) - 1
-	for i := n; i >= 0; i-- {
-		ctx.todos[i]()
-	}
-}
-
-type BaseHandler struct {
-	Handle func(ctx *Context)
-}
-
-func NewBaseHandler(f func(ctx *Context)) BaseHandler {
-	return BaseHandler{
-		Handle: f,
-	}
-}
-
-func (b BaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-		// handle all the error
-		err_ := recover()
-		if err_ == nil {
-			return
-		}
-
-		var stack string
-		var buf bytes.Buffer
-		buf.Write(debug.Stack())
-		stack = buf.String()
-
-		outJSONWithCode(w, http.StatusInternalServerError, "Internal Server Error")
-
-		log.Errorf("%v\n\n%s\n", err_, stack)
-		return
-	}()
-
-	ctx := newContext(w, r)
-	defer ctx.Done()
-
-	b.Handle(ctx)
-}
-
-func outJSONWithCode(w http.ResponseWriter, httpCode int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	s := ""
-	b, err := json.Marshal(data)
-	if err != nil {
-		s = `{"error":"json.Marshal error"}`
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		s = string(b)
-		w.WriteHeader(httpCode)
-	}
-	fmt.Fprint(w, s)
-}
-
-func outJSON(w http.ResponseWriter, data interface{}) {
-	outJSONWithCode(w, http.StatusOK, data)
 }
 
 func getStringArrayFromQuery(name, sep string, r *http.Request) (arr []string) {
@@ -131,10 +46,7 @@ func getTime(t string) time.Time {
 	return time
 }
 
-func getStringVal(n string, r *http.Request) string {
-	return strings.TrimSpace(r.FormValue(n))
-}
-
+// K字符串是否在SS数组中
 func InStringArray(k string, ss []string) bool {
 	for i := range ss {
 		if ss[i] == k {
@@ -145,6 +57,7 @@ func InStringArray(k string, ss []string) bool {
 	return false
 }
 
+// 去除重复的元素
 func UniqueStringArray(a []string) []string {
 	al := len(a)
 	if al == 0 {

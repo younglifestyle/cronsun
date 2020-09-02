@@ -1,6 +1,7 @@
 package web
 
 import (
+	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 
 type Info struct{}
 
-func (inf *Info) Overview(W http.ResponseWriter, R *http.Request) {
+func (inf *Info) Overview(c *gin.Context) {
 	var overview = struct {
 		TotalJobs        int64                   `json:"totalJobs"`
 		JobExecuted      *cronsun.StatExecuted   `json:"jobExecuted"`
@@ -56,5 +57,5 @@ func (inf *Info) Overview(W http.ResponseWriter, R *http.Request) {
 		overview.TotalJobs = gresp.Count
 	}
 
-	outJSON(W, overview)
+	c.JSON(http.StatusOK, overview)
 }

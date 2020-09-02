@@ -3,10 +3,8 @@ package main
 import (
 	"flag"
 	slog "log"
-	"net"
 	"time"
 
-	"github.com/cockroachdb/cmux"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -20,7 +18,6 @@ import (
 var (
 	level    = flag.Int("l", 0, "log level, -1:debug, 0:info, 1:warn, 2:error")
 	confFile = flag.String("conf", "conf/files/base.json", "config file path")
-	network  = flag.String("network", "", "network protocol of listen address: ipv4/ipv6, or empty use both")
 )
 
 func main() {
@@ -41,15 +38,6 @@ func main() {
 	}
 	web.EnsureJobLogIndex()
 
-	l, err := net.Listen(checkNetworkProtocol(*network), conf.Config.Web.BindAddr)
-	if err != nil {
-		log.Errorf(err.Error())
-		return
-	}
-
-	// Create a cmux.
-	m := cmux.New(l)
-	httpL := m.Match(cmux.HTTP1Fast())
 	httpServer, err := web.InitServer()
 	if err != nil {
 		log.Errorf(err.Error())
@@ -82,13 +70,11 @@ func main() {
 	}
 
 	go func() {
-		err := httpServer.Serve(httpL)
+		err := httpServer.Run(conf.Config.Web.BindAddr)
 		if err != nil {
 			panic(err.Error())
 		}
 	}()
-
-	go m.Serve()
 
 	log.Infof("cronsun web server started on %s, Ctrl+C or send kill sign to exit", conf.Config.Web.BindAddr)
 	// 注册退出事件
@@ -97,15 +83,4 @@ func main() {
 	event.Wait()
 	event.Emit(event.EXIT, nil)
 	log.Infof("exit success")
-}
-
-func checkNetworkProtocol(p string) string {
-	switch p {
-	case "ipv4":
-		return "tcp4"
-	case "ipv6":
-		return "tcp6"
-	}
-
-	return "tcp"
 }
