@@ -10,9 +10,9 @@ import (
 	v3 "github.com/coreos/etcd/clientv3"
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/shunfei/cronsun"
-	"github.com/shunfei/cronsun/conf"
-	"github.com/shunfei/cronsun/log"
+	"github.com/longcron/cronsun"
+	"github.com/longcron/cronsun/conf"
+	"github.com/longcron/cronsun/log"
 )
 
 type Node struct{}

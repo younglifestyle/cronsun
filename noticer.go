@@ -1,4 +1,4 @@
-package cronsun
+package cronjob
 
 import (
 	"bytes"
@@ -11,8 +11,8 @@ import (
 	client "github.com/coreos/etcd/clientv3"
 	"github.com/go-gomail/gomail"
 
-	"github.com/shunfei/cronsun/conf"
-	"github.com/shunfei/cronsun/log"
+	"github.com/longcron/cronsun/conf"
+	"github.com/longcron/cronsun/log"
 )
 
 type Noticer interface {

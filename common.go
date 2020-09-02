@@ -1,9 +1,9 @@
-package cronsun
+package cronjob
 
 import (
 	"fmt"
-	"github.com/shunfei/cronsun/conf"
-	"github.com/shunfei/cronsun/db"
+	"github.com/longcron/cronjob/conf"
+	"github.com/longcron/cronjob/db"
 )
 
 const (

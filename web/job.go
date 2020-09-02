@@ -12,9 +12,9 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 
-	"github.com/shunfei/cronsun"
-	"github.com/shunfei/cronsun/conf"
-	"github.com/shunfei/cronsun/log"
+	"github.com/longcron/cronjob"
+	"github.com/longcron/cronjob/conf"
+	"github.com/longcron/cronjob/log"
 )
 
 type Job struct{}
@@ -23,10 +23,10 @@ func (j *Job) GetJob(c *gin.Context) {
 	group := c.Param("group")
 	id := c.Param("id")
 
-	job, err := cronsun.GetJob(group, id)
+	job, err := cronjob.GetJob(group, id)
 	var statusCode int
 	if err != nil {
-		if err == cronsun.ErrNotFound {
+		if err == cronjob.ErrNotFound {
 			statusCode = http.StatusNotFound
 		} else {
 			statusCode = http.StatusInternalServerError
@@ -42,7 +42,7 @@ func (j *Job) DeleteJob(c *gin.Context) {
 	group := c.Param("group")
 	jobId := c.Param("id")
 
-	_, err := cronsun.DeleteJob(group, jobId)
+	_, err := cronjob.DeleteJob(group, jobId)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -65,8 +65,8 @@ func (j *Job) ChangeJobStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, job)
 }
 
-func (j *Job) updateJobStatus(group, id string, isPause bool) (*cronsun.Job, error) {
-	originJob, rev, err := cronsun.GetJobAndRev(group, id)
+func (j *Job) updateJobStatus(group, id string, isPause bool) (*cronjob.Job, error) {
+	originJob, rev, err := cronjob.GetJobAndRev(group, id)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (j *Job) updateJobStatus(group, id string, isPause bool) (*cronsun.Job, err
 		return nil, err
 	}
 
-	_, err = cronsun.DefalutClient.PutWithModRev(originJob.Key(), string(b), rev)
+	_, err = cronjob.DefalutClient.PutWithModRev(originJob.Key(), string(b), rev)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func (j *Job) BatchChangeJobStatus(c *gin.Context) {
 
 func (j *Job) UpdateJob(c *gin.Context) {
 	var job = &struct {
-		*cronsun.Job
+		*cronjob.Job
 		OldGroup string `json:"oldGroup"`
 	}{}
 
@@ -148,11 +148,11 @@ func (j *Job) UpdateJob(c *gin.Context) {
 	var successStr = "update success"
 	if len(job.ID) == 0 {
 		successStr = "created success"
-		job.ID = cronsun.NextID()
+		job.ID = cronjob.NextID()
 	} else {
 		job.OldGroup = strings.TrimSpace(job.OldGroup)
 		if job.OldGroup != job.Group {
-			deleteOldKey = cronsun.JobKey(job.OldGroup, job.ID)
+			deleteOldKey = cronjob.JobKey(job.OldGroup, job.ID)
 		}
 	}
 
@@ -177,14 +177,14 @@ func (j *Job) UpdateJob(c *gin.Context) {
 	// remove old key
 	// it should be before the put method
 	if len(deleteOldKey) > 0 {
-		if _, err = cronsun.DefalutClient.Delete(deleteOldKey); err != nil {
+		if _, err = cronjob.DefalutClient.Delete(deleteOldKey); err != nil {
 			log.Errorf("failed to remove old job key[%s], err: %s.", deleteOldKey, err.Error())
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
 	}
 
-	_, err = cronsun.DefalutClient.Put(job.Key(), string(b))
+	_, err = cronjob.DefalutClient.Put(job.Key(), string(b))
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -194,7 +194,7 @@ func (j *Job) UpdateJob(c *gin.Context) {
 }
 
 func (j *Job) GetGroups(c *gin.Context) {
-	resp, err := cronsun.DefalutClient.Get(conf.Config.Cmd, clientv3.WithPrefix(), clientv3.WithKeysOnly())
+	resp, err := cronjob.DefalutClient.Get(conf.Config.Cmd, clientv3.WithPrefix(), clientv3.WithKeysOnly())
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -226,25 +226,25 @@ func (j *Job) GetList(c *gin.Context) {
 	}
 
 	type jobStatus struct {
-		*cronsun.Job
-		LatestStatus *cronsun.JobLatestLog `json:"latestStatus"`
+		*cronjob.Job
+		LatestStatus *cronjob.JobLatestLog `json:"latestStatus"`
 		NextRunTime  string                `json:"nextRunTime"`
 	}
 
-	resp, err := cronsun.DefalutClient.Get(prefix, clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
+	resp, err := cronjob.DefalutClient.Get(prefix, clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	var nodeGroupMap map[string]*cronsun.Group
+	var nodeGroupMap map[string]*cronjob.Group
 	if nodeIsExist {
-		nodeGrouplist, err := cronsun.GetNodeGroups()
+		nodeGrouplist, err := cronjob.GetNodeGroups()
 		if err != nil {
 			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
-		nodeGroupMap = map[string]*cronsun.Group{}
+		nodeGroupMap = map[string]*cronjob.Group{}
 		for i := range nodeGrouplist {
 			nodeGroupMap[nodeGrouplist[i].ID] = nodeGrouplist[i]
 		}
@@ -253,7 +253,7 @@ func (j *Job) GetList(c *gin.Context) {
 	var jobIds []string
 	var jobList = make([]*jobStatus, 0, resp.Count)
 	for i := range resp.Kvs {
-		job := cronsun.Job{}
+		job := cronjob.Job{}
 		err = json.Unmarshal(resp.Kvs[i].Value, &job)
 		if err != nil {
 			c.String(http.StatusInternalServerError, err.Error())
@@ -267,7 +267,7 @@ func (j *Job) GetList(c *gin.Context) {
 		jobIds = append(jobIds, job.ID)
 	}
 
-	m, err := cronsun.GetJobLatestLogListByJobIds(jobIds)
+	m, err := cronjob.GetJobLatestLogListByJobIds(jobIds)
 	if err != nil {
 		log.Errorf("GetJobLatestLogListByJobIds error: %s", err.Error())
 	} else {
@@ -289,10 +289,10 @@ func (j *Job) GetJobNodes(c *gin.Context) {
 	group := c.Param("group")
 	jobId := c.Param("id")
 
-	job, err := cronsun.GetJob(group, jobId)
+	job, err := cronjob.GetJob(group, jobId)
 	var statusCode int
 	if err != nil {
-		if err == cronsun.ErrNotFound {
+		if err == cronjob.ErrNotFound {
 			statusCode = http.StatusNotFound
 		} else {
 			statusCode = http.StatusInternalServerError
@@ -303,7 +303,7 @@ func (j *Job) GetJobNodes(c *gin.Context) {
 
 	var nodes []string
 	var exNodes []string
-	groups, err := cronsun.GetGroups("")
+	groups, err := cronjob.GetGroups("")
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -335,7 +335,7 @@ func (j *Job) JobExecute(c *gin.Context) {
 	}
 
 	node := c.Query("node")
-	err := cronsun.PutOnce(group, id, node)
+	err := cronjob.PutOnce(group, id, node)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -351,7 +351,7 @@ func (j *Job) GetExecutingJob(c *gin.Context) {
 		JobIds:  getStringArrayFromQuery("jobs", ",", c.Request),
 	}
 
-	gresp, err := cronsun.DefalutClient.Get(conf.Config.Proc, clientv3.WithPrefix())
+	gresp, err := cronjob.DefalutClient.Get(conf.Config.Proc, clientv3.WithPrefix())
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -359,7 +359,7 @@ func (j *Job) GetExecutingJob(c *gin.Context) {
 
 	var list = make([]*processInfo, 0, 8)
 	for i := range gresp.Kvs {
-		proc, err := cronsun.GetProcFromKey(string(gresp.Kvs[i].Key))
+		proc, err := cronjob.GetProcFromKey(string(gresp.Kvs[i].Key))
 		if err != nil {
 			log.Errorf("Failed to unmarshal Proc from key: %s", err.Error())
 			continue
@@ -370,7 +370,7 @@ func (j *Job) GetExecutingJob(c *gin.Context) {
 		}
 
 		val := string(gresp.Kvs[i].Value)
-		var pv = &cronsun.ProcessVal{}
+		var pv = &cronjob.ProcessVal{}
 		err = json.Unmarshal([]byte(val), pv)
 		if err != nil {
 			log.Errorf("Failed to unmarshal ProcessVal from val: %s", err.Error())
@@ -380,7 +380,7 @@ func (j *Job) GetExecutingJob(c *gin.Context) {
 		procInfo := &processInfo{
 			Process: proc,
 		}
-		job, err := cronsun.GetJob(proc.Group, proc.JobID)
+		job, err := cronjob.GetJob(proc.Group, proc.JobID)
 		if err == nil && job != nil {
 			procInfo.JobName = job.Name
 		} else {
@@ -394,7 +394,7 @@ func (j *Job) GetExecutingJob(c *gin.Context) {
 }
 
 func (j *Job) KillExecutingJob(c *gin.Context) {
-	proc := &cronsun.Process{
+	proc := &cronjob.Process{
 		ID:     c.Query("pid"),
 		JobID:  c.Query("job"),
 		Group:  c.Query("group"),
@@ -407,7 +407,7 @@ func (j *Job) KillExecutingJob(c *gin.Context) {
 	}
 
 	procKey := proc.Key()
-	resp, err := cronsun.DefalutClient.Get(procKey)
+	resp, err := cronjob.DefalutClient.Get(procKey)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -418,7 +418,7 @@ func (j *Job) KillExecutingJob(c *gin.Context) {
 		return
 	}
 
-	var procVal = &cronsun.ProcessVal{}
+	var procVal = &cronjob.ProcessVal{}
 	err = json.Unmarshal(resp.Kvs[0].Value, &procVal)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
@@ -437,7 +437,7 @@ func (j *Job) KillExecutingJob(c *gin.Context) {
 		return
 	}
 
-	_, err = cronsun.DefalutClient.Put(procKey, str)
+	_, err = cronjob.DefalutClient.Put(procKey, str)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -452,7 +452,7 @@ type ProcFetchOptions struct {
 	JobIds  []string
 }
 
-func (opt *ProcFetchOptions) Match(proc *cronsun.Process) bool {
+func (opt *ProcFetchOptions) Match(proc *cronjob.Process) bool {
 	if len(opt.Groups) > 0 && !InStringArray(proc.Group, opt.Groups) {
 		return false
 	}
@@ -470,7 +470,7 @@ func (opt *ProcFetchOptions) Match(proc *cronsun.Process) bool {
 }
 
 type processInfo struct {
-	*cronsun.Process
+	*cronjob.Process
 	JobName string `json:"jobName"`
 }
 

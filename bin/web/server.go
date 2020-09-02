@@ -8,11 +8,11 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/shunfei/cronsun"
-	"github.com/shunfei/cronsun/conf"
-	"github.com/shunfei/cronsun/event"
-	"github.com/shunfei/cronsun/log"
-	"github.com/shunfei/cronsun/web"
+	"github.com/longcron/cronsun"
+	"github.com/longcron/cronsun/conf"
+	"github.com/longcron/cronsun/event"
+	"github.com/longcron/cronsun/log"
+	"github.com/longcron/cronsun/web"
 )
 
 var (
@@ -76,7 +76,7 @@ func main() {
 		}
 	}()
 
-	log.Infof("cronsun web server started on %s, Ctrl+C or send kill sign to exit", conf.Config.Web.BindAddr)
+	log.Infof("cronjob web server started on %s, Ctrl+C or send kill sign to exit", conf.Config.Web.BindAddr)
 	// 注册退出事件
 	event.On(event.EXIT, conf.Exit, stopCleaner)
 	// 监听退出信号

@@ -10,11 +10,11 @@ import (
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/shunfei/cronsun"
+	"github.com/longcron/cronjob"
 )
 
 func EnsureJobLogIndex() {
-	cronsun.GetDb().WithC(cronsun.Coll_JobLog, func(c *mgo.Collection) error {
+	cronjob.GetDb().WithC(cronjob.Coll_JobLog, func(c *mgo.Collection) error {
 		c.EnsureIndex(mgo.Index{
 			Key: []string{"beginTime"},
 		})
@@ -43,7 +43,7 @@ func (jl *JobLog) GetDetail(c *gin.Context) {
 		return
 	}
 
-	logDetail, err := cronsun.GetJobLogById(bson.ObjectIdHex(id))
+	logDetail, err := cronjob.GetJobLogById(bson.ObjectIdHex(id))
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		if err == mgo.ErrNotFound {
@@ -110,18 +110,18 @@ func (jl *JobLog) GetList(c *gin.Context) {
 
 	var pager struct {
 		Total int               `json:"total"`
-		List  []*cronsun.JobLog `json:"list"`
+		List  []*cronjob.JobLog `json:"list"`
 	}
 	var err error
 	if c.Request.FormValue("latest") == "true" {
-		var latestLogList []*cronsun.JobLatestLog
-		latestLogList, pager.Total, err = cronsun.GetJobLatestLogList(query, page, pageSize, orderBy)
+		var latestLogList []*cronjob.JobLatestLog
+		latestLogList, pager.Total, err = cronjob.GetJobLatestLogList(query, page, pageSize, orderBy)
 		for i := range latestLogList {
 			latestLogList[i].JobLog.Id = bson.ObjectIdHex(latestLogList[i].RefLogId)
 			pager.List = append(pager.List, &latestLogList[i].JobLog)
 		}
 	} else {
-		pager.List, pager.Total, err = cronsun.GetJobLogList(query, page, pageSize, orderBy)
+		pager.List, pager.Total, err = cronjob.GetJobLogList(query, page, pageSize, orderBy)
 	}
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())

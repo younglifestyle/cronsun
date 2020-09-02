@@ -1,4 +1,4 @@
-package cronsun
+package cronjob
 
 import (
 	"bytes"
@@ -16,10 +16,10 @@ import (
 
 	client "github.com/coreos/etcd/clientv3"
 
-	"github.com/shunfei/cronsun/conf"
-	"github.com/shunfei/cronsun/log"
-	"github.com/shunfei/cronsun/node/cron"
-	"github.com/shunfei/cronsun/utils"
+	"github.com/longcron/cronsun/conf"
+	"github.com/longcron/cronsun/log"
+	"github.com/longcron/cronsun/node/cron"
+	"github.com/longcron/cronsun/utils"
 )
 
 const (
@@ -33,7 +33,7 @@ const (
 )
 
 // 需要执行的 cron cmd 命令
-// 注册到 /cronsun/cmd/groupName/<id>
+// 注册到 /cronjob/cmd/groupName/<id>
 type Job struct {
 	ID       string     `json:"id"`
 	Name     string     `json:"name"`

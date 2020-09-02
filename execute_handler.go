@@ -1,9 +1,9 @@
-package cronsun
+package cronjob
 
 import (
 	"errors"
 	"fmt"
-	"github.com/shunfei/cronsun/log"
+	"github.com/longcron/cronjob/log"
 	"os"
 )
 

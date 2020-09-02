@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 
-	"github.com/shunfei/cronsun"
+	"github.com/longcron/cronsun"
 )
 
 func GetVersion(c *gin.Context) {

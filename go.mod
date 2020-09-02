@@ -1,4 +1,4 @@
-module github.com/shunfei/cronsun
+module github.com/longcron/cronjob
 
 go 1.15
 

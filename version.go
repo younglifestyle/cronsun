@@ -1,4 +1,4 @@
-package cronsun
+package cronjob
 
 import (
 	"fmt"

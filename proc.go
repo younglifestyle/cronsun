@@ -1,4 +1,4 @@
-package cronsun
+package cronjob
 
 import (
 	"encoding/json"
@@ -10,8 +10,8 @@ import (
 
 	client "github.com/coreos/etcd/clientv3"
 
-	"github.com/shunfei/cronsun/conf"
-	"github.com/shunfei/cronsun/log"
+	"github.com/longcron/cronjob/conf"
+	"github.com/longcron/cronjob/log"
 )
 
 var (
@@ -124,7 +124,7 @@ func (l *leaseID) keepAlive() {
 }
 
 // 当前执行中的任务信息
-// key: /cronsun/proc/node/group/jobId/pid
+// key: /cronjob/proc/node/group/jobId/pid
 // value: 开始执行时间
 // key 会自动过期，防止进程意外退出后没有清除相关 key，过期时间可配置
 type Process struct {

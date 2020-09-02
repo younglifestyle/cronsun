@@ -1,7 +1,7 @@
-package cronsun
+package cronjob
 
 import (
-	"github.com/shunfei/cronsun/db"
+	"github.com/longcron/cronjob/db"
 )
 
 var (

@@ -1,13 +1,13 @@
-package cronsun
+package cronjob
 
 import (
 	client "github.com/coreos/etcd/clientv3"
 
-	"github.com/shunfei/cronsun/conf"
+	"github.com/longcron/cronjob/conf"
 )
 
 // 马上执行 job 任务
-// 注册到 /cronsun/once/group/<jobID>
+// 注册到 /cronjob/once/group/<jobID>
 // value
 // 若执行单个结点，则值为 NodeID
 // 若 job 所在的结点都需执行，则值为空 ""

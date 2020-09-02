@@ -1,4 +1,4 @@
-package cronsun
+package cronjob
 
 import (
 	"time"
@@ -6,8 +6,8 @@ import (
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/shunfei/cronsun/conf"
-	"github.com/shunfei/cronsun/log"
+	"github.com/longcron/cronjob/conf"
+	"github.com/longcron/cronjob/log"
 )
 
 const (

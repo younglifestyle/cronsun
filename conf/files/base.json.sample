@@ -4,7 +4,6 @@
     "Proc": "/worker/proc/",
     "Cmd": "/worker/cmd/",
     "Once": "/worker/once/",
-    "Csctl": "/worker/csctl/",
     "Lock": "/worker/lock/",
     "Group": "/worker/group/",
     "Noticer": "/worker/noticer/",
@@ -21,6 +20,6 @@
     "Etcd": "@extend:etcd.json",
     "Mgo": "@extend:db.json",
     "Mail": "@extend:mail.json",
-    "#comment": "PIDFile and UUIDFile just work for cronnode",
-    "UUIDFile": "/etc/cronsun/CRONSUN_UUID"
+    "#comment": "UUIDFile just work for cronnode",
+    "UUIDFile": "/etc/cronjob/CRONSUN_UUID"
 }

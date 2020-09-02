@@ -1,4 +1,4 @@
-package cronsun
+package cronjob
 
 import (
 	"encoding/json"
@@ -7,12 +7,12 @@ import (
 
 	client "github.com/coreos/etcd/clientv3"
 
-	"github.com/shunfei/cronsun/conf"
-	"github.com/shunfei/cronsun/log"
+	"github.com/longcron/cronsun/conf"
+	"github.com/longcron/cronsun/log"
 )
 
 // 结点类型分组
-// 注册到 /cronsun/group/<id>
+// 注册到 /cronjob/group/<id>
 type Group struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`

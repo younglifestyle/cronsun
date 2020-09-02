@@ -9,11 +9,11 @@ import (
 	"time"
 
 	client "github.com/coreos/etcd/clientv3"
-	"github.com/shunfei/cronsun"
-	"github.com/shunfei/cronsun/conf"
-	"github.com/shunfei/cronsun/log"
-	"github.com/shunfei/cronsun/node/cron"
-	"github.com/shunfei/cronsun/utils"
+	"github.com/longcron/cronsun"
+	"github.com/longcron/cronsun/conf"
+	"github.com/longcron/cronsun/log"
+	"github.com/longcron/cronsun/node/cron"
+	"github.com/longcron/cronsun/utils"
 )
 
 // Node 执行 cron 命令服务的结构体
@@ -74,7 +74,7 @@ func NewNode(cfg *conf.Conf) (n *Node, err error) {
 	return
 }
 
-// 注册到 /cronsun/node/xx
+// 注册到 /cronjob/node/xx
 func (n *Node) Register() (err error) {
 	pid, err := n.Node.Exist()
 	if err != nil {

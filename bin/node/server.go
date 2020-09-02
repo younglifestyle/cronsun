@@ -9,11 +9,11 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/shunfei/cronsun"
-	"github.com/shunfei/cronsun/conf"
-	"github.com/shunfei/cronsun/event"
-	"github.com/shunfei/cronsun/log"
-	"github.com/shunfei/cronsun/node"
+	"github.com/longcron/cronjob"
+	"github.com/longcron/cronjob/conf"
+	"github.com/longcron/cronjob/event"
+	"github.com/longcron/cronjob/log"
+	"github.com/longcron/cronjob/node"
 )
 
 var (
@@ -34,7 +34,7 @@ func main() {
 	}
 	log.SetLogger(logger.Sugar())
 
-	if err = cronsun.Init(*confFile, true); err != nil {
+	if err = cronjob.Init(*confFile, true); err != nil {
 		log.Errorf(err.Error())
 		return
 	}
@@ -50,7 +50,7 @@ func main() {
 		return
 	}
 
-	if err = cronsun.StartProc(); err != nil {
+	if err = cronjob.StartProc(); err != nil {
 		log.Warnf("[process key will not timeout]proc lease id set err: %s", err.Error())
 	}
 
@@ -59,11 +59,11 @@ func main() {
 		return
 	}
 
-	log.Infof("cronsun %s service started, Ctrl+C or send kill sign to exit", n.String())
+	log.Infof("cronjob %s service started, Ctrl+C or send kill sign to exit", n.String())
 	// 注册退出事件
-	event.On(event.EXIT, n.Stop, conf.Exit, cronsun.Exit)
+	event.On(event.EXIT, n.Stop, conf.Exit, cronjob.Exit)
 	// 注册监听配置更新事件
-	event.On(event.WAIT, cronsun.Reload)
+	event.On(event.WAIT, cronjob.Reload)
 	// 监听退出信号
 	event.Wait()
 	// 处理退出事件

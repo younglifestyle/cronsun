@@ -1,4 +1,4 @@
-package cronsun
+package cronjob
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 	client "github.com/coreos/etcd/clientv3"
 
-	"github.com/shunfei/cronsun/conf"
+	"github.com/longcron/cronjob/conf"
 )
 
 var (

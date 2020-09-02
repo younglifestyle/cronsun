@@ -1,4 +1,4 @@
-package cronsun
+package cronjob
 
 import (
 	"encoding/json"
@@ -12,8 +12,8 @@ import (
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/shunfei/cronsun/conf"
-	"github.com/shunfei/cronsun/log"
+	"github.com/longcron/cronsun/conf"
+	"github.com/longcron/cronsun/log"
 )
 
 const (
@@ -21,7 +21,7 @@ const (
 )
 
 // 执行 cron cmd 的进程
-// 注册到 /cronsun/node/<id>
+// 注册到 /cronjob/node/<id>
 type Node struct {
 	ID       string `bson:"_id" json:"id"`  // machine id
 	PID      string `bson:"pid" json:"pid"` // 进程 pid
