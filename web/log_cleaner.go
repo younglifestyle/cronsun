@@ -3,8 +3,8 @@ package web
 import (
 	"time"
 
-	"github.com/longcron/cronsun"
-	"github.com/longcron/cronsun/log"
+	"github.com/longcron/cronjob"
+	"github.com/longcron/cronjob/log"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -27,7 +27,7 @@ func RunLogCleaner(cleanPeriod, expiration time.Duration) (close chan struct{}) 
 }
 
 func cleanupLogs(expiration time.Duration) {
-	err := cronsun.GetDb().WithC(cronsun.Coll_JobLog, func(c *mgo.Collection) error {
+	err := cronjob.GetDb().WithC(cronjob.Coll_JobLog, func(c *mgo.Collection) error {
 		_, err := c.RemoveAll(bson.M{"$or": []bson.M{
 			bson.M{"$and": []bson.M{
 				bson.M{"cleanup": bson.M{"$exists": true}},

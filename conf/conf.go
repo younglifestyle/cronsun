@@ -14,10 +14,10 @@ import (
 	"github.com/go-gomail/gomail"
 	"github.com/gofrs/uuid"
 
-	"github.com/longcron/cronsun/db"
-	"github.com/longcron/cronsun/event"
-	"github.com/longcron/cronsun/log"
-	"github.com/longcron/cronsun/utils"
+	"github.com/longcron/cronjob/db"
+	"github.com/longcron/cronjob/event"
+	"github.com/longcron/cronjob/log"
+	"github.com/longcron/cronjob/utils"
 )
 
 var (

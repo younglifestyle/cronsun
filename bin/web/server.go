@@ -8,11 +8,11 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/longcron/cronsun"
-	"github.com/longcron/cronsun/conf"
-	"github.com/longcron/cronsun/event"
-	"github.com/longcron/cronsun/log"
-	"github.com/longcron/cronsun/web"
+	"github.com/longcron/cronjob"
+	"github.com/longcron/cronjob/conf"
+	"github.com/longcron/cronjob/event"
+	"github.com/longcron/cronjob/log"
+	"github.com/longcron/cronjob/web"
 )
 
 var (
@@ -32,7 +32,7 @@ func main() {
 	}
 	log.SetLogger(logger.Sugar())
 
-	if err = cronsun.Init(*confFile, true); err != nil {
+	if err = cronjob.Init(*confFile, true); err != nil {
 		log.Errorf(err.Error())
 		return
 	}
@@ -45,19 +45,19 @@ func main() {
 	}
 
 	if conf.Config.Mail.Enable {
-		var noticer cronsun.Noticer
+		var noticer cronjob.Noticer
 
 		if len(conf.Config.Mail.HttpAPI) > 0 {
-			noticer = &cronsun.HttpAPI{}
+			noticer = &cronjob.HttpAPI{}
 		} else {
-			mailer, err := cronsun.NewMail(30 * time.Second)
+			mailer, err := cronjob.NewMail(30 * time.Second)
 			if err != nil {
 				log.Errorf(err.Error())
 				return
 			}
 			noticer = mailer
 		}
-		go cronsun.StartNoticer(noticer)
+		go cronjob.StartNoticer(noticer)
 	}
 
 	period := int64(conf.Config.Web.LogCleaner.EveryMinute)

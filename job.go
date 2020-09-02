@@ -16,10 +16,10 @@ import (
 
 	client "github.com/coreos/etcd/clientv3"
 
-	"github.com/longcron/cronsun/conf"
-	"github.com/longcron/cronsun/log"
-	"github.com/longcron/cronsun/node/cron"
-	"github.com/longcron/cronsun/utils"
+	"github.com/longcron/cronjob/conf"
+	"github.com/longcron/cronjob/log"
+	"github.com/longcron/cronjob/node/cron"
+	"github.com/longcron/cronjob/utils"
 )
 
 const (
@@ -605,7 +605,7 @@ func (j *Job) Notify(t time.Time, msg string) {
 		"Error: " + msg
 
 	m := Message{
-		Subject: "[Cronsun] node[" + j.hostname + "|" + j.ip + "] job[" + j.ShortName() + "] time[" + ts + "] exec failed",
+		Subject: "[cronjob] node[" + j.hostname + "|" + j.ip + "] job[" + j.ShortName() + "] time[" + ts + "] exec failed",
 		Body:    body,
 		To:      j.To,
 	}

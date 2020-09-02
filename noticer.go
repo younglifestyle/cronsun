@@ -11,8 +11,8 @@ import (
 	client "github.com/coreos/etcd/clientv3"
 	"github.com/go-gomail/gomail"
 
-	"github.com/longcron/cronsun/conf"
-	"github.com/longcron/cronsun/log"
+	"github.com/longcron/cronjob/conf"
+	"github.com/longcron/cronjob/log"
 )
 
 type Noticer interface {
@@ -186,9 +186,9 @@ func monitorNodes(n Noticer) {
 
 				if node.Alived {
 					n.Send(&Message{
-						Subject: fmt.Sprintf("[Cronsun Warning] Node[%s] break away cluster at %s",
+						Subject: fmt.Sprintf("[cronjob Warning] Node[%s] break away cluster at %s",
 							node.Hostname, time.Now().Format(time.RFC3339)),
-						Body: fmt.Sprintf("Cronsun Node breaked away cluster, this might happened when node crash or network problems.\nUUID: %s\nHostname: %s\nIP: %s\n", id, node.Hostname, node.IP),
+						Body: fmt.Sprintf("cronjob Node breaked away cluster, this might happened when node crash or network problems.\nUUID: %s\nHostname: %s\nIP: %s\n", id, node.Hostname, node.IP),
 						To:   conf.Config.Mail.To,
 					})
 				}

@@ -7,8 +7,8 @@ import (
 
 	client "github.com/coreos/etcd/clientv3"
 
-	"github.com/longcron/cronsun/conf"
-	"github.com/longcron/cronsun/log"
+	"github.com/longcron/cronjob/conf"
+	"github.com/longcron/cronjob/log"
 )
 
 // 结点类型分组

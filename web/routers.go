@@ -4,11 +4,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 
-	"github.com/longcron/cronsun"
+	"github.com/longcron/cronjob"
 )
 
 func GetVersion(c *gin.Context) {
-	c.String(http.StatusOK, cronsun.Version)
+	c.String(http.StatusOK, cronjob.Version)
 }
 
 func initRouters() (engine *gin.Engine, err error) {

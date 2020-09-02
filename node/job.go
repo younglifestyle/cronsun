@@ -1,7 +1,7 @@
 package node
 
 import (
-	"github.com/longcron/cronsun"
+	"github.com/longcron/cronjob"
 )
 
-type Jobs map[string]*cronsun.Job
+type Jobs map[string]*cronjob.Job

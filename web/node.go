@@ -10,9 +10,9 @@ import (
 	v3 "github.com/coreos/etcd/clientv3"
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/longcron/cronsun"
-	"github.com/longcron/cronsun/conf"
-	"github.com/longcron/cronsun/log"
+	"github.com/longcron/cronjob"
+	"github.com/longcron/cronjob/conf"
+	"github.com/longcron/cronjob/log"
 )
 
 type Node struct{}
@@ -20,7 +20,7 @@ type Node struct{}
 var ngKeyDeepLen = len(conf.Config.Group)
 
 func (n *Node) UpdateGroup(c *gin.Context) {
-	g := cronsun.Group{}
+	g := cronjob.Group{}
 	err := c.BindJSON(&g)
 	if err != nil {
 		c.String(http.StatusBadRequest, err.Error())
@@ -31,7 +31,7 @@ func (n *Node) UpdateGroup(c *gin.Context) {
 	g.ID = strings.TrimSpace(g.ID)
 	if len(g.ID) == 0 {
 		successCode = http.StatusCreated
-		g.ID = cronsun.NextID()
+		g.ID = cronjob.NextID()
 	}
 
 	if err = g.Check(); err != nil {
@@ -50,7 +50,7 @@ func (n *Node) UpdateGroup(c *gin.Context) {
 }
 
 func (n *Node) GetGroups(c *gin.Context) {
-	list, err := cronsun.GetNodeGroups()
+	list, err := cronjob.GetNodeGroups()
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -61,7 +61,7 @@ func (n *Node) GetGroups(c *gin.Context) {
 
 func (n *Node) GetGroupByGroupId(c *gin.Context) {
 	gid := c.Query("id")
-	g, err := cronsun.GetGroupById(gid)
+	g, err := cronjob.GetGroupById(gid)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -81,13 +81,13 @@ func (n *Node) DeleteGroup(c *gin.Context) {
 		return
 	}
 
-	_, err := cronsun.DeleteGroupById(groupId)
+	_, err := cronjob.DeleteGroupById(groupId)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	gresp, err := cronsun.DefalutClient.Get(conf.Config.Cmd, v3.WithPrefix())
+	gresp, err := cronjob.DefalutClient.Get(conf.Config.Cmd, v3.WithPrefix())
 	if err != nil {
 		errstr := fmt.Sprintf("failed to fetch jobs from etcd after deleted node group[%s]: %s", groupId, err.Error())
 		log.Errorf(errstr)
@@ -97,7 +97,7 @@ func (n *Node) DeleteGroup(c *gin.Context) {
 
 	// update rule's node group
 	for i := range gresp.Kvs {
-		job := cronsun.Job{}
+		job := cronjob.Job{}
 		err = json.Unmarshal(gresp.Kvs[i].Value, &job)
 		key := string(gresp.Kvs[i].Key)
 		if err != nil {
@@ -125,7 +125,7 @@ func (n *Node) DeleteGroup(c *gin.Context) {
 				log.Errorf("failed to marshal job[%s]: %s", key, err.Error())
 				continue
 			}
-			_, err = cronsun.DefalutClient.PutWithModRev(key, string(v), gresp.Kvs[i].ModRevision)
+			_, err = cronjob.DefalutClient.PutWithModRev(key, string(v), gresp.Kvs[i].ModRevision)
 			if err != nil {
 				log.Errorf("failed to update job[%s]: %s", key, err.Error())
 				continue
@@ -137,13 +137,13 @@ func (n *Node) DeleteGroup(c *gin.Context) {
 }
 
 func (n *Node) GetNodes(c *gin.Context) {
-	nodes, err := cronsun.GetNodes()
+	nodes, err := cronjob.GetNodes()
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	gresp, err := cronsun.DefalutClient.Get(conf.Config.Node, v3.WithPrefix(), v3.WithKeysOnly())
+	gresp, err := cronjob.DefalutClient.Get(conf.Config.Node, v3.WithPrefix(), v3.WithKeysOnly())
 	if err == nil {
 		connecedMap := make(map[string]bool, gresp.Count)
 		for i := range gresp.Kvs {
@@ -170,7 +170,7 @@ func (n *Node) DeleteNode(c *gin.Context) {
 		return
 	}
 
-	resp, err := cronsun.DefalutClient.Get(conf.Config.Node + nodeId)
+	resp, err := cronjob.DefalutClient.Get(conf.Config.Node + nodeId)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -181,7 +181,7 @@ func (n *Node) DeleteNode(c *gin.Context) {
 		return
 	}
 
-	err = cronsun.RemoveNode(bson.M{"_id": nodeId})
+	err = cronjob.RemoveNode(bson.M{"_id": nodeId})
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -189,14 +189,14 @@ func (n *Node) DeleteNode(c *gin.Context) {
 
 	// remove node from group
 	var errmsg = "failed to remove node %s from groups, please remove it manually: %s"
-	resp, err = cronsun.DefalutClient.Get(conf.Config.Group, v3.WithPrefix())
+	resp, err = cronjob.DefalutClient.Get(conf.Config.Group, v3.WithPrefix())
 	if err != nil {
 		c.String(http.StatusInternalServerError, fmt.Sprintf(errmsg, nodeId, err.Error()))
 		return
 	}
 
 	for i := range resp.Kvs {
-		g := cronsun.Group{}
+		g := cronjob.Group{}
 		err = json.Unmarshal(resp.Kvs[i].Value, &g)
 		if err != nil {
 			c.String(http.StatusInternalServerError, fmt.Sprintf(errmsg, nodeId, err.Error()))

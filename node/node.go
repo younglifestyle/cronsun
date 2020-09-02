@@ -9,22 +9,22 @@ import (
 	"time"
 
 	client "github.com/coreos/etcd/clientv3"
-	"github.com/longcron/cronsun"
-	"github.com/longcron/cronsun/conf"
-	"github.com/longcron/cronsun/log"
-	"github.com/longcron/cronsun/node/cron"
-	"github.com/longcron/cronsun/utils"
+	"github.com/longcron/cronjob"
+	"github.com/longcron/cronjob/conf"
+	"github.com/longcron/cronjob/log"
+	"github.com/longcron/cronjob/node/cron"
+	"github.com/longcron/cronjob/utils"
 )
 
 // Node 执行 cron 命令服务的结构体
 type Node struct {
-	*cronsun.Client
-	*cronsun.Node
+	*cronjob.Client
+	*cronjob.Node
 	*cron.Cron
 
 	jobs   Jobs // 和结点相关的任务
 	groups Groups
-	cmds   map[string]*cronsun.Cmd
+	cmds   map[string]*cronjob.Cmd
 
 	link
 	// 删除的 job id，用于 group 更新
@@ -53,8 +53,8 @@ func NewNode(cfg *conf.Conf) (n *Node, err error) {
 	}
 
 	n = &Node{
-		Client: cronsun.DefalutClient,
-		Node: &cronsun.Node{
+		Client: cronjob.DefalutClient,
+		Node: &cronjob.Node{
 			ID:       uuid,
 			PID:      strconv.Itoa(os.Getpid()),
 			IP:       ip.String(),
@@ -63,7 +63,7 @@ func NewNode(cfg *conf.Conf) (n *Node, err error) {
 		Cron: cron.New(),
 
 		jobs: make(Jobs, 8),
-		cmds: make(map[string]*cronsun.Cmd),
+		cmds: make(map[string]*cronjob.Cmd),
 
 		link:   newLink(8),
 		delIDs: make(map[string]bool, 8),
@@ -134,11 +134,11 @@ func (n *Node) keepAlive() {
 }
 
 func (n *Node) loadJobs() (err error) {
-	if n.groups, err = cronsun.GetGroups(""); err != nil {
+	if n.groups, err = cronjob.GetGroups(""); err != nil {
 		return
 	}
 
-	jobs, err := cronsun.GetJobs()
+	jobs, err := cronjob.GetJobs()
 	if err != nil {
 		return
 	}
@@ -155,7 +155,7 @@ func (n *Node) loadJobs() (err error) {
 	return
 }
 
-func (n *Node) addJob(job *cronsun.Job, notice bool) {
+func (n *Node) addJob(job *cronjob.Job, notice bool) {
 	n.link.addJob(job)
 
 	if job.IsRunOn(n.ID, n.groups) {
@@ -195,7 +195,7 @@ func (n *Node) delJob(id string) {
 	return
 }
 
-func (n *Node) modJob(job *cronsun.Job) {
+func (n *Node) modJob(job *cronjob.Job) {
 	oJob, ok := n.jobs[job.ID]
 	// 之前此任务没有在当前结点执行，直接增加任务
 	if !ok {
@@ -222,7 +222,7 @@ func (n *Node) modJob(job *cronsun.Job) {
 	n.link.addJob(oJob)
 }
 
-func (n *Node) addCmd(cmd *cronsun.Cmd, notice bool) {
+func (n *Node) addCmd(cmd *cronjob.Cmd, notice bool) {
 	n.Cron.Schedule(cmd.JobRule.Schedule, cmd)
 	n.cmds[cmd.GetID()] = cmd
 
@@ -232,7 +232,7 @@ func (n *Node) addCmd(cmd *cronsun.Cmd, notice bool) {
 	return
 }
 
-func (n *Node) modCmd(cmd *cronsun.Cmd, notice bool) {
+func (n *Node) modCmd(cmd *cronjob.Cmd, notice bool) {
 	c, ok := n.cmds[cmd.GetID()]
 	if !ok {
 		n.addCmd(cmd, notice)
@@ -253,13 +253,13 @@ func (n *Node) modCmd(cmd *cronsun.Cmd, notice bool) {
 	}
 }
 
-func (n *Node) delCmd(cmd *cronsun.Cmd) {
+func (n *Node) delCmd(cmd *cronjob.Cmd) {
 	delete(n.cmds, cmd.GetID())
 	n.Cron.DelJob(cmd)
 	log.Infof("job[%s] group[%s] rule[%s] timer[%s] has deleted", cmd.Job.ID, cmd.Job.Group, cmd.JobRule.ID, cmd.JobRule.Timer)
 }
 
-func (n *Node) addGroup(g *cronsun.Group) {
+func (n *Node) addGroup(g *cronjob.Group) {
 	n.groups[g.ID] = g
 }
 
@@ -293,7 +293,7 @@ func (n *Node) delGroup(id string) {
 	return
 }
 
-func (n *Node) modGroup(g *cronsun.Group) {
+func (n *Node) modGroup(g *cronjob.Group) {
 	oGroup, ok := n.groups[g.ID]
 	if !ok {
 		n.addGroup(g)
@@ -317,7 +317,7 @@ func (n *Node) modGroup(g *cronsun.Group) {
 	return
 }
 
-func (n *Node) groupAddNode(g *cronsun.Group) {
+func (n *Node) groupAddNode(g *cronjob.Group) {
 	n.groups[g.ID] = g
 	jls := n.link[g.ID]
 	if len(jls) == 0 {
@@ -334,7 +334,7 @@ func (n *Node) groupAddNode(g *cronsun.Group) {
 				continue
 			}
 
-			if job, err = cronsun.GetJob(jl.gname, jid); err != nil {
+			if job, err = cronjob.GetJob(jl.gname, jid); err != nil {
 				log.Warnf("get job[%s][%s] err: %s", jl.gname, jid, err.Error())
 				n.link.delGroupJob(g.ID, jid)
 				continue
@@ -358,7 +358,7 @@ func (n *Node) groupAddNode(g *cronsun.Group) {
 	return
 }
 
-func (n *Node) groupRmNode(g, og *cronsun.Group) {
+func (n *Node) groupRmNode(g, og *cronjob.Group) {
 	jls := n.link[g.ID]
 	if len(jls) == 0 {
 		n.groups[g.ID] = g
@@ -391,7 +391,7 @@ func (n *Node) groupRmNode(g, og *cronsun.Group) {
 	n.groups[g.ID] = g
 }
 
-func (n *Node) KillExcutingProc(process *cronsun.Process) {
+func (n *Node) KillExcutingProc(process *cronjob.Process) {
 	pid, _ := strconv.Atoi(process.ID)
 	if err := syscall.Kill(-pid, syscall.SIGKILL); err != nil {
 		log.Warnf("process:[%d] force kill failed, error:[%s]\n", pid, err)
@@ -400,12 +400,12 @@ func (n *Node) KillExcutingProc(process *cronsun.Process) {
 }
 
 func (n *Node) watchJobs() {
-	rch := cronsun.WatchJobs()
+	rch := cronjob.WatchJobs()
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
 			switch {
 			case ev.IsCreate():
-				job, err := cronsun.GetJobFromKv(ev.Kv.Key, ev.Kv.Value)
+				job, err := cronjob.GetJobFromKv(ev.Kv.Key, ev.Kv.Value)
 				if err != nil {
 					log.Warnf("err: %s, kv: %s", err.Error(), ev.Kv.String())
 					continue
@@ -414,7 +414,7 @@ func (n *Node) watchJobs() {
 				job.Init(n.ID, n.Hostname, n.IP)
 				n.addJob(job, true)
 			case ev.IsModify():
-				job, err := cronsun.GetJobFromKv(ev.Kv.Key, ev.Kv.Value)
+				job, err := cronjob.GetJobFromKv(ev.Kv.Key, ev.Kv.Value)
 				if err != nil {
 					log.Warnf("err: %s, kv: %s", err.Error(), ev.Kv.String())
 					continue
@@ -423,7 +423,7 @@ func (n *Node) watchJobs() {
 				job.Init(n.ID, n.Hostname, n.IP)
 				n.modJob(job)
 			case ev.Type == client.EventTypeDelete:
-				n.delJob(cronsun.GetIDFromKey(string(ev.Kv.Key)))
+				n.delJob(cronjob.GetIDFromKey(string(ev.Kv.Key)))
 			default:
 				log.Warnf("unknown event type[%v] from job[%s]", ev.Type, string(ev.Kv.Key))
 			}
@@ -432,21 +432,21 @@ func (n *Node) watchJobs() {
 }
 
 func (n *Node) watchExcutingProc() {
-	rch := cronsun.WatchProcs(n.ID)
+	rch := cronjob.WatchProcs(n.ID)
 
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
 			switch {
 			case ev.IsModify():
 				key := string(ev.Kv.Key)
-				process, err := cronsun.GetProcFromKey(key)
+				process, err := cronjob.GetProcFromKey(key)
 				if err != nil {
 					log.Warnf("err: %s, kv: %s", err.Error(), ev.Kv.String())
 					continue
 				}
 
 				val := string(ev.Kv.Value)
-				pv := &cronsun.ProcessVal{}
+				pv := &cronjob.ProcessVal{}
 				err = json.Unmarshal([]byte(val), pv)
 				if err != nil {
 					continue
@@ -461,12 +461,12 @@ func (n *Node) watchExcutingProc() {
 }
 
 func (n *Node) watchGroups() {
-	rch := cronsun.WatchGroups()
+	rch := cronjob.WatchGroups()
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
 			switch {
 			case ev.IsCreate():
-				g, err := cronsun.GetGroupFromKv(ev.Kv.Key, ev.Kv.Value)
+				g, err := cronjob.GetGroupFromKv(ev.Kv.Key, ev.Kv.Value)
 				if err != nil {
 					log.Warnf("err: %s, kv: %s", err.Error(), ev.Kv.String())
 					continue
@@ -474,7 +474,7 @@ func (n *Node) watchGroups() {
 
 				n.addGroup(g)
 			case ev.IsModify():
-				g, err := cronsun.GetGroupFromKv(ev.Kv.Key, ev.Kv.Value)
+				g, err := cronjob.GetGroupFromKv(ev.Kv.Key, ev.Kv.Value)
 				if err != nil {
 					log.Warnf("err: %s, kv: %s", err.Error(), ev.Kv.String())
 					continue
@@ -482,7 +482,7 @@ func (n *Node) watchGroups() {
 
 				n.modGroup(g)
 			case ev.Type == client.EventTypeDelete:
-				n.delGroup(cronsun.GetIDFromKey(string(ev.Kv.Key)))
+				n.delGroup(cronjob.GetIDFromKey(string(ev.Kv.Key)))
 			default:
 				log.Warnf("unknown event type[%v] from group[%s]", ev.Type, string(ev.Kv.Key))
 			}
@@ -491,7 +491,7 @@ func (n *Node) watchGroups() {
 }
 
 func (n *Node) watchOnce() {
-	rch := cronsun.WatchOnce()
+	rch := cronjob.WatchOnce()
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
 			switch {
@@ -500,7 +500,7 @@ func (n *Node) watchOnce() {
 					continue
 				}
 
-				job, ok := n.jobs[cronsun.GetIDFromKey(string(ev.Kv.Key))]
+				job, ok := n.jobs[cronjob.GetIDFromKey(string(ev.Kv.Key))]
 				if !ok || !job.IsRunOn(n.ID, n.groups) {
 					continue
 				}
